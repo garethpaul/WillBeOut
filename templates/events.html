@@ -1,0 +1,165 @@
+{% extends 'base.html %}
+
+{% block head_tag %}
+<link rel="stylesheet" href="{{ static_url("css/weekly.css") }}" type="text/css"/>
+<script type='text/javascript'>
+var e = {
+           "event":
+               [    {% for i in events %}
+                    {"date":"{{ i.f}}","place":"{{ i.place }}", "id": {{ i.id}}},
+		    {% end %}
+               ]
+           }
+</script>
+{% end %}
+{% block content %}
+
+<header class="jumbotron subhead" id="overview">
+  <div class="container">
+    <h1>Events</h1>
+	<p class='lead'>Your events .. </p>
+	
+  </div>
+</header>
+<div class='container'>
+<div class='row'>
+
+<!--
+	
+	<table class="weekly table table-bordered">
+	    <thead></thead>
+	</table>
+	<div class='scrollbox'>
+		<table class="weekly table table-bordered" style='margin-top:-2px'>
+			<thead style='height:1px;'>
+		        <tr>
+		            <th width="6%"></th>
+		            <th width="12%"></th>
+		            <th width="12%"></th>
+		            <th width="12%"></th>
+		            <th width="12%"></th>
+			    <th width="12%"></th>
+			    <th width="12%"></th>
+			    <th width="12%"></th>
+		        </tr>
+		    </thead>
+	    <tbody style='margin-top:-3px'>
+	        <tr class='rowCal'>
+	    </tbody>
+
+	</table>​
+	</div>
+-->	
+
+	<div class='span8'>
+		<div class="page-header">
+		            <h1>Calendar</h1>
+		</div>
+		<div class="span8" id="calendar"></div>
+	</div>
+	<div class='span4' id='calendar-info'>
+		<div class="page-header hide">
+		            <h1>Info</h1>
+		</div>
+		
+		<div class="detail"></div>
+		
+		<!--	<p><a href="#new" role="button" class="btn btn-custom" data-toggle="modal">New Event</a></p>
+			<p><a href="#drinkstoday" role="button" class="btn btn-custom" data-toggle="modal">New Today</a></p>
+		-->
+		<div class='menu'>
+			<div class="page-header">
+			            <h1>Options</h1>
+			</div>	
+			<ul>
+				<li><a href="#drinkstoday" role="button" class="" data-toggle="modal">New Today</a></li>
+				<li><a href="#new" role="button" class="nevent" data-toggle="modal">New Event</a></li>
+				<!--<li><a href=''>Add Note</a></li>-->
+			</ul>
+		</div>
+
+	</div>
+
+	<div class='span9'>
+	<div class="page-header">
+	            <h1>Coming Up</h1>
+	</div>
+	<table class='table'>
+	<tr>
+		<td>Place</td>
+		<td>From</td>
+		<td>To</td>
+		<td></td>
+	</tr>
+	{% for i in events %}
+	<tr class='rowCal'>
+	 <td><a href='/event?event_id={{ i.id }}'>{{ i.place }}</a></td>
+	<td>{{ i.f }}</td>
+	<td>{{ i.t }}</td>
+	<td><a class="btn-auth btn-facebook" href="#" onclick='postToFeed("http://127.0.0.1:5000/event?id={{ i.id }}", "{{ i.place }}", "{{ i.id }}", "{{ i.f }}", "{{ i.t }}");'>Share with Friends</a></td>
+	</a></td>
+	</tr>
+	{% end %}
+	</table>
+
+	 </div>
+
+</div>
+</div>
+</div>
+
+ 
+
+<div class="modal" style='display:none' id="new" tabindex="-1" role="dialog" aria-labelledby="newLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">New Event</h3>
+  </div>
+  <form id='newform' method='post'>
+  <div class="modal-body">
+	  <label>Place</label>
+	  <input type="text" name='place' placeholder="San Francisco…">
+	<div class="alert alert-error" id="alert" style="display: none; "></div>
+	<label>From</label>
+	<div class="input-append date" id="from" data-date="2012-08-30" data-date-format="yyyy-mm-dd">
+	  <input class="span2 from" size="16" name='from' type="text" value="2012-08-30" readonly>
+	  <span class="add-on"><i class="icon-th"></i></span>
+	</div>
+	<label>To</label>
+	<div class="input-append date" id="to" data-date="2012-08-30" data-date-format="yyyy-mm-dd">
+	  <input class="span2 to" size="16" name='to' type="text" value="2012-08-30" readonly>
+	  <span class="add-on"><i class="icon-th"></i></span>
+	</div>
+{{ x }}
+  </div>
+  <div class="modal-footer">
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button class="btn btn-orange" onclick='$("#newform").submit()'>Add New Event</button>
+  </div>
+  </form>
+</div>
+
+
+<!-- DRINKS TODAY -->
+<div class="modal" style='display:none' id="drinkstoday" tabindex="-1" role="dialog" aria-labelledby="newLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">New Event</h3>
+  </div>
+  <form id='newform' action='events' method='post'>
+  <div class="modal-body">
+	  <label>Place</label>
+	  <input type="text" name='place' placeholder="San Francisco…">
+	  <input class="span2 from" size="16" name='from' type="hidden" value="2012-08-30" readonly>
+	  <input class="span2 to" size="16" name='to' type="hidden" value="2012-08-30" readonly>
+	  {{ x }}
+  </div>
+  <div class="modal-footer">
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button class="btn btn-orange" onclick='$("#newform").submit()'>Add New Event</button>
+  </div>
+  </form>
+</div>	
+<span class='data' data-weekno=''></span>
+<script type='text/javascript' src='/static/js/events.js'></script>
+{% end %}

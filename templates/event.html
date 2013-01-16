@@ -1,0 +1,321 @@
+{% extends 'base.html %}
+
+{% block content %}
+<header class="jumbotron subhead" id="overview">
+  <div class="container">
+    <h1>Events</h1>
+	<p class='lead'>{{ event['place'] }} | {{ event['f'] }} to {{ event['t'] }}  <a class="btn-auth btn-facebook" href="#" onclick='postToFeed("http://willbeout.com/event?id={{ event.id }}", "{{ event.place }}", "{{ event.id }}", "{{ event.f }}", "{{ event.t }}");'>Share Event</a></p>
+  </div>
+</header>
+<div class='container'>
+<div class='row'>
+	<div class='span11'>
+	<div class='suggest'>
+		<h3>Suggestions <a href="#places" role="button" class="btn padd" data-toggle="modal"><span class='icon icon-plus'></span>Suggestion</a></h3>
+		<ul class='suggestlist'>
+			{% for i in suggestions %}
+			<li id='{{ i.id}}' data-id='{{ i.id }}'> 
+			<span class='left'>
+				<!--<div class="corner">
+				  <span href="#">Voted By Event Owner</span>
+				</div>
+				-->
+				<p class='name'><a target='_blank' href='{{i.url}}'>{{ i.name }}</a></p>
+				<p class='address'>{{ i.address}}</p>
+				<p class='city'>{{ i.city }}</p>
+				<p class='city'>Provider: {{ i.user_name }}</p>
+				<p class='votes'>{{ i.friends }} friends have voted for this location..</p>
+				<span data-id='{{ i.id }}' class='voted right hide'>You have voted for this place.<p><a href='/change/vote?id={{i.id}}&event_id={{event['id']}}' class='changevote'>Remove Your Vote</a></p></span>
+				<a data-id='{{ i.id }}' href='/vote?id={{ i.id }}&event_id={{ event['id'] }}' class='btn vote right hide'><span class='icon icon-plus'></span> me</a>
+			</span>
+			<span class='right'><img src="https://graph.facebook.com/{{ i.user_id }}/picture?type=small"/></span>
+			</li>
+			{% end %}
+		</ul>
+		<script type='text/javascript'>
+		function formatNum(num){
+			if (num < 12){
+				return num + ' AM';
+			} else if (num > 12){
+				return num-12 + ' PM';
+			} else if (num=12) {
+				return '12 PM';
+			}
+		}
+		
+		function getCookie(name) {
+		    var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+		    return r ? r[1] : undefined;
+		}
+		var votes = [{% for i in votes %}'{{ i.suggestion_id }}',{% end %}];
+		$.each($('.suggestlist li'), function(index, value){
+			var _id = $(this).attr('data-id');
+			if (votes.indexOf(_id) >= 0){
+				$(this).addClass('suggested');
+				$(this).css('border-color', 'red');
+			} else{
+				//
+			}
+		});
+		$('.suggestlist li').hover(function(){
+				var li = $(this);
+				var _id = $(this).attr('data-id');
+				console.log(votes.indexOf(_id));
+				if (votes.indexOf(_id) <= -1){
+					$(li).addClass('slight');
+					var p = $(li).position();
+					var _id = $(li).attr('data-id');
+					$(li).find('.vote').show();
+				} 
+				else {
+					$(li).addClass('slight');
+					$(li).find('.vote').hide();
+					$(li).find('.voted').show();
+					$(li).find('.voted').css('position', 'relative');
+				}
+			},
+			function(){
+				$(this).removeClass('slight');
+				$(this).find('.vote').hide();
+				$(this).find('.voted').hide();
+			});	
+
+		</script>
+		<div class='availability'>
+			<h3>Availability <a href="#newtime" role="button" class="btn padd" data-toggle="modal"><span class='icon icon-plus'></span>Time</a></h3>
+			<ul class='timesav'></ul>
+		<script type='text/javascript'>
+		$.getJSON('/time?event_id={{ event['id'] }}', function(data) {
+			time_ids = []
+			$.each(data, function(k,v){
+				time_ids.push(v.time);
+			});
+			$.each($.unique(time_ids).sort(), function(k,v){
+				$('.timesav').append('<li data-time="' + v + '" id="' + v + '"><h4>' + formatNum(v) + '</h4></li>');
+			});
+			$.each(data, function(key, value){
+				$('.timesav [data-time="' + value.time + '"]').append('<img src="https://graph.facebook.com/' + value.user + '/picture?type=small">');
+			});
+
+
+		});
+		</script>
+		</div>
+	</div>
+	<div class='msgs'>
+		<h3>Attendees</h3>
+		
+		<div id='attend'></div>
+		<script type='text/javascript'>
+		_uid = '{{ escape(current_user['id']) }}';
+		_eid = '{{ event["userid"] }}';
+		_button = ''
+		$.getJSON('/attend/data?event_id={{ event['id'] }}', function(data) {
+			btn = true;
+			var items = '';
+		  	$.each(data, function(key, val) {
+				if (val.user_id == {{ current_user['id'] }}) {
+					// vote out
+					_button = "<div><a href='/attend/no?event_id={{ event['id'] }}' class='btn btn-danger'>I'm Out</a></div>"
+				} else {
+					_button = "<div><a href='/attend?event_id={{ event['id'] }}' class='btn btn-primary'>I'm In</a></div>"
+				}
+				items += ('<img src="https://graph.facebook.com/' + val.user_id + '/picture?type=small">');
+			});
+			if (data.length == 0){
+				_button = "<div><a href='/attend?event_id={{ event['id'] }}' class='btn btn-primary'>I'm In'</a></div>";
+			}
+			$('#attend').html(_button + items);
+		});
+		
+		</script>
+	</div>
+	<div class='msgs'>
+		<h3>Messages <a href="#new" role="button" class="btn right padd" data-toggle="modal"><span class='icon icon-plus'></span>Message</a></h3>
+		<ul class='msglist'></ul>
+	</div>
+	</div>
+</div>
+</div>
+
+<script type='text/javascript'>
+$.getJSON('/messages?event_id={{ event['id'] }}', function(data) {
+	console.log(data);
+	var items = '';
+  	$.each(data, function(key, val) {
+		if ( val.user_id == {{ current_user['id'] }}){
+			items += ('<li class="admin" id="' + val.id + '">')
+		} else{
+			items += ('<li id="' + val.id + '">');
+		}
+    		
+		items += ('<img class="left" src="https://graph.facebook.com/' 
+			   + val.user_id 
+			   +'/picture?type=small"/>'
+			   + '<span class="msg">' + val.msg + '</span>'
+			   + '<span class="date right">' + val.d + '</span>');
+
+		items += ('<div class="clear"></div></li>');
+	});
+
+	$('.msglist').append(items);
+	$('.admin').hover(function(){
+		var p = $(this).position();
+		var _id = $(this).attr('id')
+		$(this).find('.date').append('<a href="/delete/message?ide=' + _id + '&event_id={{ event['id'] }}" class="delete"><span class="icon-remove"></span></a>');
+	}, function(){
+		$(this).find('.delete').remove();
+	});
+});
+
+</script>
+
+<div class="modal" style='display:none' id="newtime" tabindex="-1" role="dialog" aria-labelledby="newLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Time</h3>
+  </div>
+  <form action='time' id='newtime' method='post'>
+<input type='hidden' id='availabletimes' name='availabletimes' value='' />
+<input type='hidden' name='event_id' value='{{ event['id'] }}' />
+  <div class="modal-body">
+	  <label>Availability</label>
+	<div class='timecontainer'>
+	</div>
+	<script type='text/javascript'>
+	times = [9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24];
+
+	$.each(times, function(index, value){
+		$('.timecontainer').append('<div class="btn boxtime" data-id="' + value + '">' + formatNum(value) + '</div>');
+	});
+	var at = []
+	$('.timecontainer .boxtime').toggle(function(){
+		$(this).addClass('timeselect');
+		$(this).attr('data-on', 'true');
+		at.push($(this).attr('data-id'));
+		at.sort();
+		$('#availabletimes').val(escape(at));
+	},function(){
+		$(this).removeClass('timeselect');
+		var _id = $(this).attr('data-id');
+		at.splice(at.indexOf(_id));
+	});
+	</script>
+	
+	
+{{ x }}
+  </div>
+  <div class="modal-footer">
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button class="btn btn-orange newtimesubmit">Submit</button>
+  </div>
+  </form>
+</div>
+<script>
+$('#newtime').submit(function(){
+//	return false;	
+});
+</script>
+
+
+
+<div class="modal" style='display:none' id="new" tabindex="-1" role="dialog" aria-labelledby="newLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Message</h3>
+  </div>
+  <form action='messages' id='newform' method='post'>
+  <div class="modal-body">
+	  <label>Add Message</label>
+	  <textarea name='msg' rows="9"></textarea>
+ 	<input type='hidden' name='type' value='message' />
+	<input type='hidden' name='id' value='{{ event['id'] }}' />
+{{ x }}
+  </div>
+  <div class="modal-footer">
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button class="btn btn-orange" onclick='$("#newform").submit()'>Submit</button>
+  </div>
+  </form>
+</div>
+
+<div class="modal" style='display:none' id="places" tabindex="-1" role="dialog" aria-labelledby="newLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Suggest Places</h3>
+  </div>
+  
+  <div class="modal-body">
+	<input type='text' value='Cocktails' id='string' />	
+	<input type='text' value='San Francisco'id='location' />
+	<button id='yelp' class='btn btn-orange'>Find Places</button>
+	<ul id='results'></ul>
+	<script type='text/javascript'>
+	$('#yelp').click(function(){
+		places($('#string').val(), $('#location').val());
+	});
+
+	
+
+	function places(string, location){
+		$.ajax({
+		    url      : 'http://api.yelp.com/business_review_search?'
+				  + 'term=' + string + '&'
+	 			  + '&location=' + location
+				  + '&sort=2'
+				  + '&limit=11'
+				  + '&ywsid=XC8xrNSGzZfZw6731kvJiA',
+		    dataType : 'jsonp',
+		    //data     : {term : 'restaurant', lat : xxx, long : xxx}, // callback is not necessary
+		    success  : function(data) {
+			console.log(data);
+			if (data.message.text = 'OK'){
+				$('#results').html('');
+				$.each(data.businesses, function(index, value) { 
+				  var item = data.businesses[index];
+				  var r = $('#results');
+				  var t = '<li>' 
+					+ '<a target="_blank" href="' + item.url + '">' + (item.name) + '</a>'
+					+ '<button class="suggest btn right" data-name="' + item.name + '"data-address="' 
+					+ item.address1 + '"data-city="' + item.city + '" data-url="' 
+					+ item.url + '" style="line-height:12px">Suggest</button>'
+					+ '<span>(' + (item.review_count) + ')</span>'
+				        + '<span><img src="' + (item.rating_img_url_small) + '" /></span>';
+				  r.append(t);
+				});
+				$('.suggest').click(function(){
+					// details
+					var it = $(this);
+					$.post("/suggest", { 
+							'name' : it.attr('data-name'),
+							'url' : it.attr('data-url'),
+							'address': it.attr('data-address'),
+							'city': it.attr('data-city'),
+							'event_id': '{{ event['id' ]}}',
+							'_xsrf': getCookie("_xsrf")
+					}, function(data) {
+						if (data = 'OK'){
+							window.location.href = '/event?event_id={{ event['id' ]}}';
+						}
+					});
+				});
+			}
+		}
+		});
+	}
+
+	</script>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+  </div>
+  </form>
+</div>
+<script>
+
+
+
+</script>
+
+
+{% end %}

@@ -1,0 +1,67 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/> 
+    <title>WillBeOut</title>
+    <link rel="stylesheet" href="{{ static_url("css/bootstrap.css") }}" type="text/css"/>
+	<link rel="stylesheet" href="{{ static_url("css/style.css") }}" type="text/css"/>
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<script type="text/javascript" src="{{ static_url("js/bootstrap.js") }}"></script>
+	<script type="text/javascript" src="{{ static_url("js/bootstrap-datepicker.js") }}"></script>
+	<script type="text/javascript" src="{{ static_url("js/bootstrap-calendar.js") }}"></script>
+	<script type="text/javascript" src="{{ static_url("js/feeds.js") }}"></script>
+	{% block head_tag %}
+	{% end %}
+  </head>
+  <body>
+	<!-- FACEBOOK -->
+	<div id='fb-root'></div>
+	<script src='http://connect.facebook.net/en_US/all.js'></script>
+	
+	<div class="navbar navbar-inverse navbar-static-top">
+	      <div class="navbar-custom">
+	        <div class="container">
+	          <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+	            <span class="icon-bar"></span>
+	            <span class="icon-bar"></span>
+	            <span class="icon-bar"></span>
+	          </button>
+	          
+	          <div class="nav-collapse collapse">
+	            <ul class="nav">
+			<li><a class="brand" href="/"> <img src='{{ static_url("img/og.png") }}' /></a>
+			<li><a class="brand" href="/">WillBeOut</a></li>
+	              <li class="">
+	                <a href="/">Home</a>
+	              </li>
+	              <li class="">
+	                <a href="/events">Events</a>
+			</li>
+			
+	            </ul>
+		  <span class='pull-right' style='margin-top:4px; border:1px solid white; position:relative; z-index:9999'>
+			<span class='popover-bottom' data-trigger='click' data-placement="bottom" rel="popover" 
+			data-content="<a class='btn-auth btn-facebook' href='{{ escape(current_user['link'])}}'>Facebook Profile</span>" 
+			data-original-title="{{ escape(current_user['name']) }}">
+			<img src='https://graph.facebook.com/{{ escape(current_user['id']) }}/picture?type=large' />
+			</span>
+		</span>
+		  <ul class="nav pull-right">
+		 	<li><a href='../auth/logout'>Logout</a></li>
+		  </ul>
+			
+			
+	          </div>
+	        </div>
+	      </div>
+	    </div>
+		{% block content %}
+	
+		
+		{% end %}
+<script type="text/javascript">
+FB.init({appId: "462064377147228", status: true, cookie: true});
+</script>		
+<script type="text/javascript" src="{{ static_url("js/feeds.js")}}"></script>	
+  </body>
+</html>
