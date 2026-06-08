@@ -1,5 +1,8 @@
 # WillBeOut
 
+<!-- README-OVERVIEW-IMAGE -->
+![Project overview](docs/readme-overview.svg)
+
 ## Overview
 
 `garethpaul/WillBeOut` is a Python web API or service project. This is the repo for willbeout.com
@@ -77,4 +80,3 @@ Keep changes small and tied to the project that is already present in this repos
 The repository also contains `README`. Its existing project summary is:
 
 > Running WillBeOut =================
-
