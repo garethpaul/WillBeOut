@@ -1,3 +1,8 @@
 Running WillBeOut
 =================
 
+Set a deployment-specific Tornado cookie signing secret before starting the app:
+
+    export COOKIE_SECRET="$(python -c 'import base64, os; print(base64.b64encode(os.urandom(32)).decode("ascii"))')"
+
+The app refuses to start without `COOKIE_SECRET` so public source code cannot provide a reusable signer for authenticated user cookies.

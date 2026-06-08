@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os.path
+import os
 import tornado.auth
 import tornado.escape
 import tornado.httpserver
@@ -35,6 +35,14 @@ define('mysql_host', default='')
 define('mysql_database', default='')
 define('mysql_user', default='')
 define('mysql_password', default='')
+define('cookie_secret', default=os.environ.get('COOKIE_SECRET', ''),
+       help='Tornado secure cookie signing secret')
+
+
+def configured_cookie_secret():
+    if options.cookie_secret:
+        return options.cookie_secret
+    raise RuntimeError('COOKIE_SECRET must be set before starting WillBeOut')
 
 
 class Application(tornado.web.Application):
@@ -65,7 +73,7 @@ class Application(tornado.web.Application):
 			(r"/privacy", Privacy),
         ]
         settings = dict(
-            cookie_secret="12oETzKXQAGaYdkG5gEmGeJJFuYh7EQnp2XdTP1o/Vo=",
+            cookie_secret=configured_cookie_secret(),
             login_url="/auth/login",
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
             static_path=os.path.join(os.path.dirname(__file__), "static"),
