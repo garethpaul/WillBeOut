@@ -45,3 +45,6 @@ clear before any deployment.
 - Real attendee or friend datasets
 - Public deployment without access/privacy review
 - Framework rewrites that hide authorization behavior
+
+This list is a roadmap guardrail, not a permanent rule.
+Strong user demand and strong technical rationale can change it.
