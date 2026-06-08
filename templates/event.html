@@ -25,8 +25,8 @@
 				<p class='city'>{{ i.city }}</p>
 				<p class='city'>Provider: {{ i.user_name }}</p>
 				<p class='votes'>{{ i.friends }} friends have voted for this location..</p>
-				<span data-id='{{ i.id }}' class='voted right hide'>You have voted for this place.<p><a href='/change/vote?id={{i.id}}&event_id={{event['id']}}' class='changevote'>Remove Your Vote</a></p></span>
-				<a data-id='{{ i.id }}' href='/vote?id={{ i.id }}&event_id={{ event['id'] }}' class='btn vote right hide'><span class='icon icon-plus'></span> me</a>
+				<div data-id='{{ i.id }}' class='voted right hide'>You have voted for this place.<form action='/change/vote' method='post' class='vote-form'><input type='hidden' name='id' value='{{ i.id }}' /><input type='hidden' name='event_id' value='{{ event['id'] }}' />{{ x }}<button type='submit' class='changevote'>Remove Your Vote</button></form></div>
+				<form data-id='{{ i.id }}' action='/vote' method='post' class='vote-add-form right hide'><input type='hidden' name='id' value='{{ i.id }}' /><input type='hidden' name='event_id' value='{{ event['id'] }}' />{{ x }}<button type='submit' class='btn'><span class='icon icon-plus'></span> me</button></form>
 			</span>
 			<span class='right'><img src="https://graph.facebook.com/{{ i.user_id }}/picture?type=small"/></span>
 			</li>
@@ -65,18 +65,18 @@
 					$(li).addClass('slight');
 					var p = $(li).position();
 					var _id = $(li).attr('data-id');
-					$(li).find('.vote').show();
+					$(li).find('.vote-add-form').show();
 				} 
 				else {
 					$(li).addClass('slight');
-					$(li).find('.vote').hide();
+					$(li).find('.vote-add-form').hide();
 					$(li).find('.voted').show();
 					$(li).find('.voted').css('position', 'relative');
 				}
 			},
 			function(){
 				$(this).removeClass('slight');
-				$(this).find('.vote').hide();
+				$(this).find('.vote-add-form').hide();
 				$(this).find('.voted').hide();
 			});	
 
@@ -110,20 +110,27 @@
 		_uid = '{{ escape(current_user['id']) }}';
 		_eid = '{{ event["userid"] }}';
 		_button = ''
+		function attendForm(action, label, buttonClass) {
+			return "<div><form action='" + action + "' method='post'>"
+				+ "<input type='hidden' name='event_id' value='{{ event['id'] }}' />"
+				+ "<input type='hidden' name='_xsrf' value='" + getCookie("_xsrf") + "' />"
+				+ "<button type='submit' class='btn " + buttonClass + "'>" + label + "</button>"
+				+ "</form></div>";
+		}
 		$.getJSON('/attend/data?event_id={{ event['id'] }}', function(data) {
 			btn = true;
 			var items = '';
 		  	$.each(data, function(key, val) {
 				if (val.user_id == {{ current_user['id'] }}) {
 					// vote out
-					_button = "<div><a href='/attend/no?event_id={{ event['id'] }}' class='btn btn-danger'>I'm Out</a></div>"
+					_button = attendForm('/attend/no', "I'm Out", 'btn-danger')
 				} else {
-					_button = "<div><a href='/attend?event_id={{ event['id'] }}' class='btn btn-primary'>I'm In</a></div>"
+					_button = attendForm('/attend', "I'm In", 'btn-primary')
 				}
 				items += ('<img src="https://graph.facebook.com/' + val.user_id + '/picture?type=small">');
 			});
 			if (data.length == 0){
-				_button = "<div><a href='/attend?event_id={{ event['id'] }}' class='btn btn-primary'>I'm In'</a></div>";
+				_button = attendForm('/attend', "I'm In", 'btn-primary');
 			}
 			$('#attend').html(_button + items);
 		});
@@ -162,7 +169,7 @@ $.getJSON('/messages?event_id={{ event['id'] }}', function(data) {
 	$('.admin').hover(function(){
 		var p = $(this).position();
 		var _id = $(this).attr('id')
-		$(this).find('.date').append('<a href="/delete/message?ide=' + _id + '&event_id={{ event['id'] }}" class="delete"><span class="icon-remove"></span></a>');
+		$(this).find('.date').append('<form action="/delete/message" method="post" class="delete" style="display:inline"><input type="hidden" name="ide" value="' + _id + '" /><input type="hidden" name="event_id" value="{{ event['id'] }}" /><input type="hidden" name="_xsrf" value="' + getCookie("_xsrf") + '" /><button type="submit" style="border:0;background:none;padding:0"><span class="icon-remove"></span></button></form>');
 	}, function(){
 		$(this).find('.delete').remove();
 	});

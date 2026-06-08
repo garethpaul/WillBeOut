@@ -9,7 +9,7 @@ class IndexHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     @tornado.web.authenticated
     @tornado.web.asynchronous
     def get(self):
-		self.render('mobile_index.html')
+        self.render('mobile_index.html')
 
 class EventsHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     @tornado.web.authenticated
@@ -33,4 +33,5 @@ class EventHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
         LEFT JOIN willbeout_votes as b ON a.id = b.suggestion_id
         WHERE a.event_id = %s
         GROUP BY a.id ORDER BY friends DESC;""", int(_id))
-        self.render('mobile_event.html', event=event, places=places)
+        self.render('mobile_event.html', event=event, places=places,
+                    x=self.xsrf_form_html())
