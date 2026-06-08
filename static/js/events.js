@@ -1,6 +1,12 @@
 var currentTime = new Date()
 var m = currentTime.getMonth() + 1;
 var month = '';
+
+function getCookie(name) {
+	var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+	return r ? r[1] : undefined;
+}
+
 if (m < 10) {
 	month = '0' + m;
 } else {
@@ -311,7 +317,8 @@ $('.weekly tbody tr td').toggle(function() {
 			week: _week,
 			hour: _hour,
 			month: _month,
-			year: _year
+			year: _year,
+			'_xsrf': getCookie("_xsrf")
 		});
 		d2 = $('[data-detail="true"]').parent().next().find('td').filter('[data-day="' + d + '"]')[0];
 		$(d2).css('border-top', 'red');

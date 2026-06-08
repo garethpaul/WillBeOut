@@ -69,7 +69,7 @@ class Application(tornado.web.Application):
             login_url="/auth/login",
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
             static_path=os.path.join(os.path.dirname(__file__), "static"),
-            xsrf_cookies=False,
+            xsrf_cookies=True,
             facebook_api_key=options.facebook_api_key,
             facebook_secret=options.facebook_secret,
             ui_modules={"Post": PostModule},

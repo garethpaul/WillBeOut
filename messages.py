@@ -8,7 +8,7 @@ import urllib
 
 class DMHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     @tornado.web.authenticated
-    def get(self):
+    def post(self):
         _id = self.get_argument('ide')
         _event_id = self.get_argument('event_id')
         _user_id = self.get_current_user()['id']

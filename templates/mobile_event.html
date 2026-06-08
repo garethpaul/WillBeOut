@@ -226,12 +226,14 @@ function getCookie(name) {
 		<div data-role="content" id="contentTransition" name="contentTransition">
 			<div class="content-primary">
 			<h2>Event: {{event.place}}</h2> 
-			<form data-rel='external' id='newform'>
+			<form data-rel='external' action='/messages' method='post' id='newform'>
 			<label>Add Message</label>
 			<textarea name='msg' rows="9"></textarea>
 			<input type='hidden' name='type' value='message' />
 			<input type='hidden' name='id' value='{{ event['id'] }}' />
+			{{ x }}
 			<input type='submit' value='Submit Message'/>
+			</form>
 			</div>
 		 </div> 
 		<div data-role="footer" class='ui-bar'>
@@ -246,7 +248,8 @@ function getCookie(name) {
 		   e.preventDefault();
 		   $.post('/messages', {'msg': $('textarea[name="msg"]').val(), 
 					'type': $('input[name="type"]').val(),
-					'id': $('input[name="id"]').val()}, function(){
+					'id': $('input[name="id"]').val(),
+					'_xsrf': getCookie("_xsrf")}, function(){
 						window.location.href = '/mobile/event?id={{event['id']}}';
 					});
 		});
