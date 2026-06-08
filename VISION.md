@@ -39,7 +39,7 @@ The app handles social identities, event attendance, availability, and places.
 It should keep data access scoped, credentials secret, and privacy expectations
 clear before any deployment.
 
-## What We Will Not Merge For Now
+## What We Will Not Merge (For Now)
 
 - Plaintext credentials
 - Real attendee or friend datasets
