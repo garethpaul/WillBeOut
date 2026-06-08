@@ -33,6 +33,8 @@ Helpful reports include:
 - Review found database, model, query, or persistence-related code; changes in those areas should receive security-focused review before merge.
 - Review found secret-like configuration names that require careful review before use; changes in those areas should receive security-focused review before merge.
 - Dependency manifests detected: requirements.txt. Dependency updates should preserve lockfiles when present and avoid introducing packages without a clear maintenance reason.
+- Tornado secure-cookie signing should use `COOKIE_SECRET` from deployment
+  configuration. Do not replace it with a checked-in literal secret.
 
 ## Service and API Notes
 

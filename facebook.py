@@ -31,6 +31,8 @@ define("facebook_api_key", help="your Facebook API key",
        default="")
 define("facebook_secret", help="your Facebook application secret",
        default="")
+define("cookie_secret", help="Tornado secure-cookie signing secret",
+       default=os.environ.get("COOKIE_SECRET", ""))
 define('mysql_host', default='')
 define('mysql_database', default='')
 define('mysql_user', default='')
@@ -65,7 +67,7 @@ class Application(tornado.web.Application):
 			(r"/privacy", Privacy),
         ]
         settings = dict(
-            cookie_secret="12oETzKXQAGaYdkG5gEmGeJJFuYh7EQnp2XdTP1o/Vo=",
+            cookie_secret=options.cookie_secret,
             login_url="/auth/login",
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
             static_path=os.path.join(os.path.dirname(__file__), "static"),

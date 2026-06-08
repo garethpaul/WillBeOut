@@ -30,7 +30,7 @@ class AuthLoginHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
         if check(user_agent) == 1:
             self.redirect(self.get_argument("next", "../events"))
         else:
-            self.redirect(self.get_argument("next", "../events"))åå
+            self.redirect(self.get_argument("next", "../events"))
 
 class AuthLogoutHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     def get(self):

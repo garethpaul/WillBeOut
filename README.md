@@ -46,17 +46,21 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 ## Running or Using the Project
 
-- No single runtime entry point was identified. Start by reading the source files and manifests listed above.
+- Run `python facebook.py --cookie_secret="$COOKIE_SECRET"` after installing dependencies and configuring Facebook/MySQL options.
 
 ## Testing and Verification
 
-- No dedicated automated test command was identified from the checked-in files. Verify changes by running the relevant build or manually exercising the sample.
+- Run `make verify` for static auth/configuration contracts and Python 2 syntax checks.
+- Run `make check` for the same gate with bytecode cleanup before and after.
+- Full runtime verification still requires a Python 2 compatible environment
+  for the legacy Tornado and MySQL dependencies.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
 ## Configuration and Secrets
 
-- Detected references to Twitter. Keep API keys, OAuth credentials, tokens, and account-specific values in local configuration only.
+- `COOKIE_SECRET` configures Tornado secure-cookie signing and must not be committed.
+- Facebook and MySQL options are read from Tornado command-line/config options; keep credentials out of git.
 
 ## Security and Privacy Notes
 
@@ -68,6 +72,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 ## Maintenance Notes
 
+- Do not commit generated Python bytecode, local virtual environments, or
+  `.env` files.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 

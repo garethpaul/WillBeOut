@@ -16,6 +16,7 @@ Priority:
 
 - Preserve event, availability, suggestion, and voting flows
 - Keep Facebook and MySQL credentials in deployment configuration
+- Keep Tornado cookie signing secrets in deployment configuration
 - Treat Python 2 and old Tornado/Facebook APIs as legacy
 - Avoid exposing friend, event, or attendance data
 
@@ -24,6 +25,7 @@ Next priorities:
 - Fix syntax and compatibility issues before runtime use
 - Add README setup notes and archive status
 - Add tests for auth, event access, votes, and availability updates
+- Keep `make check` covering auth and secret-configuration contracts
 - Review privacy behavior for friend checks and event visibility
 
 Contribution rules:
