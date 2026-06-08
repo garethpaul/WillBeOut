@@ -39,7 +39,6 @@ Canonical security policy and reporting:
 
 - [`SECURITY.md`](SECURITY.md)
 
-
 The app handles social identities, event attendance, availability, and places.
 It should keep data access scoped, credentials secret, and privacy expectations
 clear before any deployment.
