@@ -47,7 +47,12 @@
 			</span>
 		</span>
 		  <ul class="nav pull-right">
-		 	<li><a href='../auth/logout'>Logout</a></li>
+		    <li>
+		      <form action="/auth/logout" method="post" style="margin:0">
+		        {{ xsrf_form_html() }}
+		        <button type="submit" style="background:transparent;border:0;color:#999;padding:10px 15px;text-shadow:0 -1px 0 rgba(0,0,0,0.25)">Logout</button>
+		      </form>
+		    </li>
 		  </ul>
 			
 			
