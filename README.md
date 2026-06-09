@@ -80,6 +80,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `VISION.md` for project direction and contribution guardrails.
 - See `docs/plans/2026-06-08-cookie-secret-contract.md` for the current auth
   and cookie-secret baseline.
+- See `docs/plans/2026-06-08-safe-auth-next-redirect.md` for the safe
+  post-login redirect contract.
 
 ## Contributing
 

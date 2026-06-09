@@ -5,8 +5,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AUTH = ROOT / "auth.py"
+BASE = ROOT / "base.py"
 FACEBOOK = ROOT / "facebook.py"
-PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
+COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
+SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -33,11 +35,43 @@ def test_cookie_secret_comes_from_configuration():
     )
 
 
+def test_auth_next_redirects_are_local_only():
+    base_source = BASE.read_text()
+    auth_source = AUTH.read_text()
+
+    assert_true("def get_safe_next_url" in base_source, "BaseHandler must expose a safe next-url helper")
+    assert_true(
+        'next_url.startswith("/")' in base_source,
+        "safe next-url helper must allow only site-local absolute paths",
+    )
+    assert_true(
+        'not next_url.startswith("//")' in base_source,
+        "safe next-url helper must reject protocol-relative redirects",
+    )
+    assert_true(
+        'self.redirect(self.get_argument("next"' not in auth_source,
+        "auth callback must not redirect directly to a next argument",
+    )
+    assert_true(
+        'self.get_safe_next_url("/events")' in auth_source,
+        "auth callback must redirect through the safe next-url helper",
+    )
+    assert_true(
+        "tornado.escape.url_escape(next_url)" in auth_source,
+        "auth login URL must carry the sanitized next path",
+    )
+
+
+def assert_completed_plan(path, label):
+    assert_true(path.is_file(), "{0} plan must live under docs/plans".format(label))
+    plan = path.read_text()
+    assert_true("status: completed" in plan.lower(), "{0} plan must be completed".format(label))
+    assert_true("make check" in plan, "{0} plan must record verification".format(label))
+
+
 def test_plan_and_cleanup_contracts_exist():
-    assert_true(PLAN.is_file(), "auth contract plan must live under docs/plans")
-    plan = PLAN.read_text()
-    assert_true("status: completed" in plan.lower(), "auth contract plan must be completed")
-    assert_true("make check" in plan, "auth contract plan must record verification")
+    assert_completed_plan(COOKIE_SECRET_PLAN, "auth contract")
+    assert_completed_plan(SAFE_NEXT_PLAN, "safe auth next redirect")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env"]:
@@ -48,6 +82,7 @@ def main():
     tests = [
         test_auth_handler_has_no_stray_non_code_suffix,
         test_cookie_secret_comes_from_configuration,
+        test_auth_next_redirects_are_local_only,
         test_plan_and_cleanup_contracts_exist,
     ]
     for test in tests:

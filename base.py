@@ -13,6 +13,12 @@ class BaseHandler(tornado.web.RequestHandler):
             return None
         return tornado.escape.json_decode(user_json)
 
+    def get_safe_next_url(self, default="/events"):
+        next_url = self.get_argument("next", default)
+        if next_url and next_url.startswith("/") and not next_url.startswith("//"):
+            return next_url
+        return default
+
     def write_error(self, status_code, **kwargs):
         print 'In get_error_html. status_code: ', status_code
         if status_code in [403, 404, 500, 503]:

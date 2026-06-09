@@ -2,6 +2,7 @@
 
 ## 2026-06-08
 
+- Restricted Facebook login `next` redirects to local absolute paths.
 - Standardized docs-plan completion status while preserving `make check`
   evidence enforcement.
 - Removed a stray non-code suffix from the Facebook auth redirect path.
