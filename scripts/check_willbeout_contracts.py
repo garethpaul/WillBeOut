@@ -10,6 +10,7 @@ EVENTS = ROOT / "events.py"
 MOBILE = ROOT / "mobile.py"
 VOTES = ROOT / "votes.py"
 ATTENDEES = ROOT / "attendees.py"
+MESSAGES = ROOT / "messages.py"
 FACEBOOK = ROOT / "facebook.py"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
@@ -20,6 +21,7 @@ EVENT_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-event-id-valida
 VOTE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-vote-id-validation.md"
 ATTENDEE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-attendee-id-validation.md"
 AVAILABILITY_EVENT_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-availability-event-id-validation.md"
+MESSAGE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-message-id-validation.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -206,6 +208,39 @@ def test_availability_event_ids_are_validated_before_database_access():
     )
 
 
+def test_message_ids_are_validated_before_database_access():
+    source = MESSAGES.read_text()
+
+    assert_true(
+        "_message_id = self.get_int_argument('ide')" in source,
+        "delete-message handler must validate message ids before database writes",
+    )
+    assert_true(
+        source.count("_event_id = self.get_int_argument('event_id')") >= 2,
+        "message handlers must validate event_id before database access",
+    )
+    assert_true(
+        "_event_id = self.get_int_argument('id')" in source,
+        "message post handler must validate posted event ids before database writes",
+    )
+    assert_true(
+        "_id = self.get_argument('ide')" not in source,
+        "delete-message handler must not use raw message id arguments",
+    )
+    assert_true(
+        "event_id = self.get_argument('event_id')" not in source,
+        "message list handler must not use raw event_id arguments",
+    )
+    assert_true(
+        "_event_id = self.get_argument('id')" not in source,
+        "message post handler must not use raw event id arguments",
+    )
+    assert_true(
+        "self.redirect('/event?event_id=' + str(_event_id))" in source,
+        "message redirects must stringify the validated event id",
+    )
+
+
 def test_mobile_event_rendering_requires_owner_or_friend_access():
     source = MOBILE.read_text()
     assert_true("def _friendship_visible" in source, "mobile EventHandler must interpret Facebook friend-check responses")
@@ -248,6 +283,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(VOTE_ID_VALIDATION_PLAN, "vote id validation")
     assert_completed_plan(ATTENDEE_ID_VALIDATION_PLAN, "attendee id validation")
     assert_completed_plan(AVAILABILITY_EVENT_ID_VALIDATION_PLAN, "availability event id validation")
+    assert_completed_plan(MESSAGE_ID_VALIDATION_PLAN, "message id validation")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env"]:
@@ -264,6 +300,7 @@ def main():
         test_vote_ids_are_validated_before_database_writes,
         test_attendee_event_ids_are_validated_before_database_access,
         test_availability_event_ids_are_validated_before_database_access,
+        test_message_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_plan_and_cleanup_contracts_exist,
     ]

@@ -35,6 +35,8 @@ Helpful reports include:
 - Dependency manifests detected: requirements.txt. Dependency updates should preserve lockfiles when present and avoid introducing packages without a clear maintenance reason.
 - Tornado secure-cookie signing should use `COOKIE_SECRET` from deployment
   configuration. Do not replace it with a checked-in literal secret.
+- Request IDs for event, vote, attendee, availability, and message handlers
+  should be validated before database access or redirects.
 
 ## Service and API Notes
 

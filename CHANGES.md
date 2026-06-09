@@ -2,6 +2,9 @@
 
 ## 2026-06-09
 
+- Added shared integer request validation for message event ids and
+  delete-message ids.
+- Added static checker coverage for malformed message id handling.
 - Added shared integer request validation for attendance event ids.
 - Added static checker coverage for malformed attendance event id handling.
 - Added shared integer request validation for availability event ids.
