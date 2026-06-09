@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Removed tracked macOS metadata and added static checker coverage to keep it
+  out of source control.
 - Added shared integer request validation for message event ids and
   delete-message ids.
 - Added static checker coverage for malformed message id handling.

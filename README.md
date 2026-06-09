@@ -52,8 +52,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 - Run `make verify` for static auth/configuration/desktop and mobile
   event-access, missing-event, event-id, vote-id, attendee-id, and
-  availability-id and message-id validation contracts plus Python 2 syntax
-  checks.
+  availability-id and message-id validation contracts, generated metadata
+  checks, plus Python 2 syntax checks.
 - Run `make check` for the same gate with bytecode cleanup before and after.
 - Completed maintenance plans live under `docs/plans` and are checked by
   `make check`.
@@ -79,6 +79,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 - Do not commit generated Python bytecode, local virtual environments, or
   `.env` files.
+- Do not commit generated desktop metadata such as `.DS_Store`.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `docs/plans/2026-06-08-cookie-secret-contract.md` for the current auth
@@ -101,6 +102,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   availability request event id validation.
 - See `docs/plans/2026-06-09-message-id-validation.md` for message request
   event id and delete-message id validation.
+- See `docs/plans/2026-06-09-generated-macos-metadata.md` for generated
+  desktop metadata cleanup.
 
 ## Contributing
 

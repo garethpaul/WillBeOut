@@ -22,6 +22,7 @@ VOTE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-vote-id-validati
 ATTENDEE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-attendee-id-validation.md"
 AVAILABILITY_EVENT_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-availability-event-id-validation.md"
 MESSAGE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-message-id-validation.md"
+GENERATED_MACOS_METADATA_PLAN = ROOT / "docs" / "plans" / "2026-06-09-generated-macos-metadata.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -266,6 +267,19 @@ def test_mobile_event_rendering_requires_owner_or_friend_access():
     )
 
 
+def test_generated_macos_metadata_is_not_committed():
+    offenders = []
+    for path in ROOT.rglob(".DS_Store"):
+        relative = path.relative_to(ROOT)
+        if ".git" not in relative.parts:
+            offenders.append(relative.as_posix())
+
+    assert_true(
+        not offenders,
+        "generated macOS metadata must not be committed: {0}".format(", ".join(offenders)),
+    )
+
+
 def assert_completed_plan(path, label):
     assert_true(path.is_file(), "{0} plan must live under docs/plans".format(label))
     plan = path.read_text()
@@ -284,9 +298,10 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(ATTENDEE_ID_VALIDATION_PLAN, "attendee id validation")
     assert_completed_plan(AVAILABILITY_EVENT_ID_VALIDATION_PLAN, "availability event id validation")
     assert_completed_plan(MESSAGE_ID_VALIDATION_PLAN, "message id validation")
+    assert_completed_plan(GENERATED_MACOS_METADATA_PLAN, "generated macOS metadata")
 
     gitignore = GITIGNORE.read_text()
-    for pattern in ["__pycache__/", "*.py[cod]", ".env"]:
+    for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
         assert_true(pattern in gitignore, ".gitignore must ignore {0}".format(pattern))
 
 
@@ -302,6 +317,7 @@ def main():
         test_availability_event_ids_are_validated_before_database_access,
         test_message_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,
+        test_generated_macos_metadata_is_not_committed,
         test_plan_and_cleanup_contracts_exist,
     ]
     for test in tests:

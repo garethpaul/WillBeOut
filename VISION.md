@@ -26,6 +26,7 @@ Priority:
 - Validate attendee event ids before reading or writing attendance data
 - Validate availability event ids before reading or writing availability data
 - Validate message event and delete ids before reading or writing message data
+- Keep generated desktop metadata out of source control
 - Avoid exposing friend, event, or attendance data
 
 Next priorities:
@@ -40,6 +41,7 @@ Contribution rules:
 
 - One PR = one focused auth, event, vote, database, template, or documentation change.
 - Do not commit credentials or real attendee data.
+- Do not commit generated desktop metadata or local environment files.
 - Keep SQL parameterized and access checks visible.
 - Separate framework modernization from product behavior changes.
 
