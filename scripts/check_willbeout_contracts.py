@@ -14,6 +14,7 @@ SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.m
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
 MOBILE_EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-09-mobile-event-access-guard.md"
 DESKTOP_MISSING_EVENT_PLAN = ROOT / "docs" / "plans" / "2026-06-09-desktop-event-missing-guard.md"
+EVENT_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-event-id-validation.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -100,6 +101,38 @@ def test_event_rendering_requires_owner_or_friend_access():
     )
 
 
+def test_event_ids_are_validated_before_database_queries():
+    base_source = BASE.read_text()
+    events_source = EVENTS.read_text()
+    mobile_source = MOBILE.read_text()
+
+    assert_true("def get_int_argument" in base_source, "BaseHandler must expose an integer argument helper")
+    assert_true(
+        "except (TypeError, ValueError):" in base_source,
+        "integer argument helper must handle malformed integer values",
+    )
+    assert_true(
+        "raise tornado.web.HTTPError(400)" in base_source,
+        "integer argument helper must reject malformed integer values with 400",
+    )
+    assert_true(
+        "_eventid = self.get_int_argument('event_id')" in events_source,
+        "desktop EventHandler must validate the event_id argument before queries",
+    )
+    assert_true(
+        "_eventid = self.get_int_argument('id')" in mobile_source,
+        "mobile EventHandler must validate the id argument before queries",
+    )
+    assert_true(
+        "int(_eventid)" not in events_source,
+        "desktop EventHandler must not re-cast the validated event id",
+    )
+    assert_true(
+        "int(_eventid)" not in mobile_source,
+        "mobile EventHandler must not re-cast the validated event id",
+    )
+
+
 def test_mobile_event_rendering_requires_owner_or_friend_access():
     source = MOBILE.read_text()
     assert_true("def _friendship_visible" in source, "mobile EventHandler must interpret Facebook friend-check responses")
@@ -138,6 +171,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(EVENT_ACCESS_PLAN, "event access guard")
     assert_completed_plan(MOBILE_EVENT_ACCESS_PLAN, "mobile event access guard")
     assert_completed_plan(DESKTOP_MISSING_EVENT_PLAN, "desktop missing event guard")
+    assert_completed_plan(EVENT_ID_VALIDATION_PLAN, "event id validation")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env"]:
@@ -150,6 +184,7 @@ def main():
         test_cookie_secret_comes_from_configuration,
         test_auth_next_redirects_are_local_only,
         test_event_rendering_requires_owner_or_friend_access,
+        test_event_ids_are_validated_before_database_queries,
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_plan_and_cleanup_contracts_exist,
     ]

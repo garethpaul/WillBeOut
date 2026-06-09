@@ -11,20 +11,20 @@ class EventHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     def get(self):
         # access trigger
         self.access = 0
-        _eventid = self.get_argument('event_id')
+        _eventid = self.get_int_argument('event_id')
         _id = self.get_current_user()['id']
         # get owner_id
         print 'checkpoint 1'
         self.event = self.db.get(
-            "SELECT * FROM willbeout_events WHERE id = %s", int(_eventid))
+            "SELECT * FROM willbeout_events WHERE id = %s", _eventid)
         if not self.event:
             raise tornado.web.HTTPError(404)
         self.suggest = self.db.query("""select a.id, a.event_id, a.address, a.city, a.name, a.url, a.user_id, a.user_name, count(b.suggestion_id) as friends from willbeout_suggest as a
         LEFT JOIN willbeout_votes as b ON a.id = b.suggestion_id
         WHERE a.event_id = %s
-        GROUP BY a.id ORDER BY friends DESC;""", int(_eventid))
+        GROUP BY a.id ORDER BY friends DESC;""", _eventid)
         self.votes = self.db.query("""select suggestion_id from willbeout_votes where event_id = %s and user_id = %s group by suggestion_id;
-        """, int(_eventid), int(_id))
+        """, _eventid, int(_id))
 
         if str(self.event['userid']).strip('L') == _id:
             self.access = 1

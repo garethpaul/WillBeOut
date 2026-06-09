@@ -19,6 +19,13 @@ class BaseHandler(tornado.web.RequestHandler):
             return next_url
         return default
 
+    def get_int_argument(self, name):
+        value = self.get_argument(name)
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            raise tornado.web.HTTPError(400)
+
     def write_error(self, status_code, **kwargs):
         print 'In get_error_html. status_code: ', status_code
         if status_code in [403, 404, 500, 503]:
