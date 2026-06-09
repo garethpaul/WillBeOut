@@ -22,6 +22,7 @@ Priority:
 - Enforce owner/friend access before rendering mobile event details
 - Return missing desktop events before reading owner fields
 - Validate event ids before querying event detail data
+- Validate vote ids before writing or deleting vote data
 - Avoid exposing friend, event, or attendance data
 
 Next priorities:

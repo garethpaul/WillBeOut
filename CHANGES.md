@@ -4,6 +4,8 @@
 
 - Added shared integer request validation for desktop and mobile event ids.
 - Added static checker coverage for malformed event id handling.
+- Added shared integer request validation for vote and change-vote ids.
+- Added static checker coverage for malformed vote id handling.
 - Returned 404 for missing desktop events before reading owner fields or
   querying related suggestions.
 - Added static checker coverage for the desktop missing-event guard.

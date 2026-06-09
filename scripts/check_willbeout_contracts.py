@@ -8,6 +8,7 @@ AUTH = ROOT / "auth.py"
 BASE = ROOT / "base.py"
 EVENTS = ROOT / "events.py"
 MOBILE = ROOT / "mobile.py"
+VOTES = ROOT / "votes.py"
 FACEBOOK = ROOT / "facebook.py"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
@@ -15,6 +16,7 @@ EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
 MOBILE_EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-09-mobile-event-access-guard.md"
 DESKTOP_MISSING_EVENT_PLAN = ROOT / "docs" / "plans" / "2026-06-09-desktop-event-missing-guard.md"
 EVENT_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-event-id-validation.md"
+VOTE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-vote-id-validation.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -133,6 +135,27 @@ def test_event_ids_are_validated_before_database_queries():
     )
 
 
+def test_vote_ids_are_validated_before_database_writes():
+    source = VOTES.read_text()
+
+    assert_true(
+        source.count("_event_id = self.get_int_argument('event_id')") >= 2,
+        "vote handlers must validate event_id before database writes",
+    )
+    assert_true(
+        source.count("_suggestion_id = self.get_int_argument('id')") >= 2,
+        "vote handlers must validate suggestion id before database writes",
+    )
+    assert_true(
+        "int(_event_id)" not in source,
+        "vote handlers must not re-cast validated event ids",
+    )
+    assert_true(
+        "int(_suggestion_id)" not in source,
+        "vote handlers must not re-cast validated suggestion ids",
+    )
+
+
 def test_mobile_event_rendering_requires_owner_or_friend_access():
     source = MOBILE.read_text()
     assert_true("def _friendship_visible" in source, "mobile EventHandler must interpret Facebook friend-check responses")
@@ -172,6 +195,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(MOBILE_EVENT_ACCESS_PLAN, "mobile event access guard")
     assert_completed_plan(DESKTOP_MISSING_EVENT_PLAN, "desktop missing event guard")
     assert_completed_plan(EVENT_ID_VALIDATION_PLAN, "event id validation")
+    assert_completed_plan(VOTE_ID_VALIDATION_PLAN, "vote id validation")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env"]:
@@ -185,6 +209,7 @@ def main():
         test_auth_next_redirects_are_local_only,
         test_event_rendering_requires_owner_or_friend_access,
         test_event_ids_are_validated_before_database_queries,
+        test_vote_ids_are_validated_before_database_writes,
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_plan_and_cleanup_contracts_exist,
     ]
