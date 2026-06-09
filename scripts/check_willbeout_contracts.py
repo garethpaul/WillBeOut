@@ -7,10 +7,12 @@ ROOT = Path(__file__).resolve().parents[1]
 AUTH = ROOT / "auth.py"
 BASE = ROOT / "base.py"
 EVENTS = ROOT / "events.py"
+MOBILE = ROOT / "mobile.py"
 FACEBOOK = ROOT / "facebook.py"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
+MOBILE_EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-09-mobile-event-access-guard.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -85,6 +87,31 @@ def test_event_rendering_requires_owner_or_friend_access():
     )
 
 
+def test_mobile_event_rendering_requires_owner_or_friend_access():
+    source = MOBILE.read_text()
+    assert_true("def _friendship_visible" in source, "mobile EventHandler must interpret Facebook friend-check responses")
+    assert_true(
+        'self.facebook_request("/me/friends/" + str(self.event[\'userid\'])' in source,
+        "mobile EventHandler must keep the Facebook friend visibility check",
+    )
+    assert_true(
+        "if self.access != 1 and not self._friendship_visible(streams):" in source,
+        "mobile EventHandler must reject non-owner and non-friend event access",
+    )
+    assert_true(
+        "raise tornado.web.HTTPError(403)" in source,
+        "mobile EventHandler must return 403 when event access is not allowed",
+    )
+    assert_true(
+        "raise tornado.web.HTTPError(404)" in source,
+        "mobile EventHandler must return 404 for missing events",
+    )
+    assert_true(
+        source.index("raise tornado.web.HTTPError(403)") < source.index("self.render('mobile_event.html'"),
+        "mobile EventHandler must enforce access before rendering mobile_event.html",
+    )
+
+
 def assert_completed_plan(path, label):
     assert_true(path.is_file(), "{0} plan must live under docs/plans".format(label))
     plan = path.read_text()
@@ -96,6 +123,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(COOKIE_SECRET_PLAN, "auth contract")
     assert_completed_plan(SAFE_NEXT_PLAN, "safe auth next redirect")
     assert_completed_plan(EVENT_ACCESS_PLAN, "event access guard")
+    assert_completed_plan(MOBILE_EVENT_ACCESS_PLAN, "mobile event access guard")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env"]:
@@ -108,6 +136,7 @@ def main():
         test_cookie_secret_comes_from_configuration,
         test_auth_next_redirects_are_local_only,
         test_event_rendering_requires_owner_or_friend_access,
+        test_mobile_event_rendering_requires_owner_or_friend_access,
         test_plan_and_cleanup_contracts_exist,
     ]
     for test in tests:

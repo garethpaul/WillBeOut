@@ -19,6 +19,7 @@ Priority:
 - Keep Tornado cookie signing secrets in deployment configuration
 - Treat Python 2 and old Tornado/Facebook APIs as legacy
 - Enforce owner/friend access before rendering event details
+- Enforce owner/friend access before rendering mobile event details
 - Avoid exposing friend, event, or attendance data
 
 Next priorities:
@@ -27,7 +28,7 @@ Next priorities:
 - Add README setup notes and archive status
 - Add tests for auth, event access, votes, and availability updates
 - Keep `make check` covering auth and secret-configuration contracts
-- Add missing-event guards before reading event owner fields
+- Add missing-event guards before reading desktop event owner fields
 
 Contribution rules:
 
