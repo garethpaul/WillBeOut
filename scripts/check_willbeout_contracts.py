@@ -9,6 +9,7 @@ BASE = ROOT / "base.py"
 EVENTS = ROOT / "events.py"
 MOBILE = ROOT / "mobile.py"
 VOTES = ROOT / "votes.py"
+ATTENDEES = ROOT / "attendees.py"
 FACEBOOK = ROOT / "facebook.py"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
@@ -17,6 +18,7 @@ MOBILE_EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-09-mobile-event-ac
 DESKTOP_MISSING_EVENT_PLAN = ROOT / "docs" / "plans" / "2026-06-09-desktop-event-missing-guard.md"
 EVENT_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-event-id-validation.md"
 VOTE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-vote-id-validation.md"
+ATTENDEE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-attendee-id-validation.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -156,6 +158,31 @@ def test_vote_ids_are_validated_before_database_writes():
     )
 
 
+def test_attendee_event_ids_are_validated_before_database_access():
+    source = ATTENDEES.read_text()
+
+    assert_true(
+        source.count("_event_id = self.get_int_argument('event_id')") >= 3,
+        "attendance handlers must validate event_id before database access",
+    )
+    assert_true(
+        "_event_id = self.get_argument('event_id')" not in source,
+        "attendance handlers must not use raw event_id arguments",
+    )
+    assert_true(
+        "escape(self.get_argument('event_id'))" not in source,
+        "attendance handlers must not rely on escaping instead of integer validation",
+    )
+    assert_true(
+        "from re import escape" not in source,
+        "attendees.py must not import unused escape handling",
+    )
+    assert_true(
+        "self.redirect('/event?event_id=' + str(_event_id))" in source,
+        "attendance redirect must stringify the validated event id",
+    )
+
+
 def test_mobile_event_rendering_requires_owner_or_friend_access():
     source = MOBILE.read_text()
     assert_true("def _friendship_visible" in source, "mobile EventHandler must interpret Facebook friend-check responses")
@@ -196,6 +223,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(DESKTOP_MISSING_EVENT_PLAN, "desktop missing event guard")
     assert_completed_plan(EVENT_ID_VALIDATION_PLAN, "event id validation")
     assert_completed_plan(VOTE_ID_VALIDATION_PLAN, "vote id validation")
+    assert_completed_plan(ATTENDEE_ID_VALIDATION_PLAN, "attendee id validation")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env"]:
@@ -210,6 +238,7 @@ def main():
         test_event_rendering_requires_owner_or_friend_access,
         test_event_ids_are_validated_before_database_queries,
         test_vote_ids_are_validated_before_database_writes,
+        test_attendee_event_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_plan_and_cleanup_contracts_exist,
     ]
