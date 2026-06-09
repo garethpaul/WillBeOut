@@ -2,6 +2,7 @@
 
 ## 2026-06-08
 
+- Enforced event owner/friend access before rendering event details.
 - Restricted Facebook login `next` redirects to local absolute paths.
 - Standardized docs-plan completion status while preserving `make check`
   evidence enforcement.

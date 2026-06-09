@@ -50,7 +50,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 ## Testing and Verification
 
-- Run `make verify` for static auth/configuration contracts and Python 2 syntax checks.
+- Run `make verify` for static auth/configuration/event-access contracts and
+  Python 2 syntax checks.
 - Run `make check` for the same gate with bytecode cleanup before and after.
 - Completed maintenance plans live under `docs/plans` and are checked by
   `make check`.
@@ -82,6 +83,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   and cookie-secret baseline.
 - See `docs/plans/2026-06-08-safe-auth-next-redirect.md` for the safe
   post-login redirect contract.
+- See `docs/plans/2026-06-08-event-access-guard.md` for the event owner/friend
+  render guard.
 
 ## Contributing
 

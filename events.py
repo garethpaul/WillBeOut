@@ -29,7 +29,16 @@ class EventHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
         self.facebook_request("/me/friends/" + str(self.event['userid']), self
             ._go, access_token=self.current_user["access_token"])
 
+    def _friendship_visible(self, streams):
+        if isinstance(streams, dict):
+            data = streams.get("data")
+            return isinstance(data, list) and len(data) > 0
+        return bool(streams)
+
     def _go(self, streams):
+        if self.access != 1 and not self._friendship_visible(streams):
+            raise tornado.web.HTTPError(403)
+
         try:
             self.render('event.html', event=self.event, suggestions=self.
                         suggest, votes=self.votes, x=self.xsrf_form_html())

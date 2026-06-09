@@ -6,9 +6,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 AUTH = ROOT / "auth.py"
 BASE = ROOT / "base.py"
+EVENTS = ROOT / "events.py"
 FACEBOOK = ROOT / "facebook.py"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
+EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -62,6 +64,27 @@ def test_auth_next_redirects_are_local_only():
     )
 
 
+def test_event_rendering_requires_owner_or_friend_access():
+    source = EVENTS.read_text()
+    assert_true("def _friendship_visible" in source, "EventHandler must interpret Facebook friend-check responses")
+    assert_true(
+        'self.facebook_request("/me/friends/" + str(self.event[\'userid\'])' in source,
+        "EventHandler must keep the Facebook friend visibility check",
+    )
+    assert_true(
+        "if self.access != 1 and not self._friendship_visible(streams):" in source,
+        "EventHandler must reject non-owner and non-friend event access",
+    )
+    assert_true(
+        "raise tornado.web.HTTPError(403)" in source,
+        "EventHandler must return 403 when event access is not allowed",
+    )
+    assert_true(
+        source.index("raise tornado.web.HTTPError(403)") < source.index("self.render('event.html'"),
+        "EventHandler must enforce access before rendering event.html",
+    )
+
+
 def assert_completed_plan(path, label):
     assert_true(path.is_file(), "{0} plan must live under docs/plans".format(label))
     plan = path.read_text()
@@ -72,6 +95,7 @@ def assert_completed_plan(path, label):
 def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(COOKIE_SECRET_PLAN, "auth contract")
     assert_completed_plan(SAFE_NEXT_PLAN, "safe auth next redirect")
+    assert_completed_plan(EVENT_ACCESS_PLAN, "event access guard")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env"]:
@@ -83,6 +107,7 @@ def main():
         test_auth_handler_has_no_stray_non_code_suffix,
         test_cookie_secret_comes_from_configuration,
         test_auth_next_redirects_are_local_only,
+        test_event_rendering_requires_owner_or_friend_access,
         test_plan_and_cleanup_contracts_exist,
     ]
     for test in tests:
