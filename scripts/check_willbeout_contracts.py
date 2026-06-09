@@ -36,7 +36,7 @@ def test_cookie_secret_comes_from_configuration():
 def test_plan_and_cleanup_contracts_exist():
     assert_true(PLAN.is_file(), "auth contract plan must live under docs/plans")
     plan = PLAN.read_text()
-    assert_true("status: completed" in plan, "auth contract plan must be completed")
+    assert_true("status: completed" in plan.lower(), "auth contract plan must be completed")
     assert_true("make check" in plan, "auth contract plan must record verification")
 
     gitignore = GITIGNORE.read_text()

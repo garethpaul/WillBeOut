@@ -52,6 +52,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 - Run `make verify` for static auth/configuration contracts and Python 2 syntax checks.
 - Run `make check` for the same gate with bytecode cleanup before and after.
+- Completed maintenance plans live under `docs/plans` and are checked by
+  `make check`.
 - Full runtime verification still requires a Python 2 compatible environment
   for the legacy Tornado and MySQL dependencies.
 
@@ -76,6 +78,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   `.env` files.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
+- See `docs/plans/2026-06-08-cookie-secret-contract.md` for the current auth
+  and cookie-secret baseline.
 
 ## Contributing
 
