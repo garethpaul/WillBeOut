@@ -51,8 +51,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 ## Testing and Verification
 
 - Run `make verify` for static auth/configuration/desktop and mobile
-  event-access, missing-event, event-id, vote-id, and attendee-id validation
-  contracts plus Python 2 syntax checks.
+  event-access, missing-event, event-id, vote-id, attendee-id, and
+  availability-id validation contracts plus Python 2 syntax checks.
 - Run `make check` for the same gate with bytecode cleanup before and after.
 - Completed maintenance plans live under `docs/plans` and are checked by
   `make check`.
@@ -96,6 +96,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   request id validation.
 - See `docs/plans/2026-06-09-attendee-id-validation.md` for attendance request
   event id validation.
+- See `docs/plans/2026-06-09-availability-event-id-validation.md` for
+  availability request event id validation.
 
 ## Contributing
 

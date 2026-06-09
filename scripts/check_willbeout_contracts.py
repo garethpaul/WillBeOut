@@ -19,6 +19,7 @@ DESKTOP_MISSING_EVENT_PLAN = ROOT / "docs" / "plans" / "2026-06-09-desktop-event
 EVENT_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-event-id-validation.md"
 VOTE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-vote-id-validation.md"
 ATTENDEE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-attendee-id-validation.md"
+AVAILABILITY_EVENT_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-availability-event-id-validation.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -183,6 +184,28 @@ def test_attendee_event_ids_are_validated_before_database_access():
     )
 
 
+def test_availability_event_ids_are_validated_before_database_access():
+    source = EVENTS.read_text()
+    time_handler_source = source[source.index("class TimeHandler"):]
+
+    assert_true(
+        time_handler_source.count("_event_id = self.get_int_argument('event_id')") >= 2,
+        "availability handlers must validate event_id before database access",
+    )
+    assert_true(
+        "_event_id = self.get_argument('event_id')" not in time_handler_source,
+        "availability handlers must not use raw event_id arguments",
+    )
+    assert_true(
+        "int(_event_id)" not in time_handler_source,
+        "availability handlers must not re-cast validated event ids",
+    )
+    assert_true(
+        "self.redirect('/event?event_id=' + str(_event_id))" in time_handler_source,
+        "availability update redirect must stringify the validated event id",
+    )
+
+
 def test_mobile_event_rendering_requires_owner_or_friend_access():
     source = MOBILE.read_text()
     assert_true("def _friendship_visible" in source, "mobile EventHandler must interpret Facebook friend-check responses")
@@ -224,6 +247,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(EVENT_ID_VALIDATION_PLAN, "event id validation")
     assert_completed_plan(VOTE_ID_VALIDATION_PLAN, "vote id validation")
     assert_completed_plan(ATTENDEE_ID_VALIDATION_PLAN, "attendee id validation")
+    assert_completed_plan(AVAILABILITY_EVENT_ID_VALIDATION_PLAN, "availability event id validation")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env"]:
@@ -239,6 +263,7 @@ def main():
         test_event_ids_are_validated_before_database_queries,
         test_vote_ids_are_validated_before_database_writes,
         test_attendee_event_ids_are_validated_before_database_access,
+        test_availability_event_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_plan_and_cleanup_contracts_exist,
     ]

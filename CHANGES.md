@@ -4,6 +4,8 @@
 
 - Added shared integer request validation for attendance event ids.
 - Added static checker coverage for malformed attendance event id handling.
+- Added shared integer request validation for availability event ids.
+- Added static checker coverage for malformed availability event id handling.
 - Added shared integer request validation for desktop and mobile event ids.
 - Added static checker coverage for malformed event id handling.
 - Added shared integer request validation for vote and change-vote ids.

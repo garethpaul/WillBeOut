@@ -76,25 +76,25 @@ class TimeHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     def post(self):
         _user_id = self.get_current_user()['id']
         _user_name = self.get_current_user()['name']
-        _event_id = self.get_argument('event_id')
+        _event_id = self.get_int_argument('event_id')
         _times = self.get_argument('availabletimes')
         self.db.execute(
             "DELETE FROM willbeout_availability WHERE event_id = %s and user_id = %s",
-            int(_event_id), int(_user_id))
+            _event_id, int(_user_id))
 
         for i in urllib.unquote(_times).split(','):
             self.db.execute(
                 """INSERT INTO willbeout_availability (user_id, user_name, time, event_id) VALUES (%s, %s, %s, %s)""",
                 int(_user_id), _user_name, int(i), _event_id)
-        self.redirect('/event?event_id=' + _event_id)
+        self.redirect('/event?event_id=' + str(_event_id))
 
     @tornado.web.authenticated
     def get(self):
         _json = []
-        _event_id = self.get_argument('event_id')
+        _event_id = self.get_int_argument('event_id')
         for i in self.db.query(
             'SELECT * FROM willbeout_availability WHERE event_id = %s ORDER BY time',
-                int(_event_id)):
+                _event_id):
             _json.append({'time': int(i['time']), 'user': int(
                 i['user_id']), 'name': str(i['user_name'])})
         self.write(json.dumps(_json))
