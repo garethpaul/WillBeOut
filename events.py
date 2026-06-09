@@ -17,6 +17,8 @@ class EventHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
         print 'checkpoint 1'
         self.event = self.db.get(
             "SELECT * FROM willbeout_events WHERE id = %s", int(_eventid))
+        if not self.event:
+            raise tornado.web.HTTPError(404)
         self.suggest = self.db.query("""select a.id, a.event_id, a.address, a.city, a.name, a.url, a.user_id, a.user_name, count(b.suggestion_id) as friends from willbeout_suggest as a
         LEFT JOIN willbeout_votes as b ON a.id = b.suggestion_id
         WHERE a.event_id = %s

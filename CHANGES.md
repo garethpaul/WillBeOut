@@ -2,6 +2,9 @@
 
 ## 2026-06-09
 
+- Returned 404 for missing desktop events before reading owner fields or
+  querying related suggestions.
+- Added static checker coverage for the desktop missing-event guard.
 - Enforced owner/friend access before rendering mobile event details and
   returned 404 for missing mobile events.
 - Added static checker coverage for the mobile event access contract.

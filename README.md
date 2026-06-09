@@ -51,7 +51,7 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 ## Testing and Verification
 
 - Run `make verify` for static auth/configuration/desktop and mobile
-  event-access contracts plus Python 2 syntax checks.
+  event-access and missing-event contracts plus Python 2 syntax checks.
 - Run `make check` for the same gate with bytecode cleanup before and after.
 - Completed maintenance plans live under `docs/plans` and are checked by
   `make check`.
@@ -87,6 +87,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   render guard.
 - See `docs/plans/2026-06-09-mobile-event-access-guard.md` for the mobile
   event owner/friend render guard.
+- See `docs/plans/2026-06-09-desktop-event-missing-guard.md` for the desktop
+  event missing-record guard.
 
 ## Contributing
 

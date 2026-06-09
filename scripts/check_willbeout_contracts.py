@@ -13,6 +13,7 @@ COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contrac
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
 MOBILE_EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-09-mobile-event-access-guard.md"
+DESKTOP_MISSING_EVENT_PLAN = ROOT / "docs" / "plans" / "2026-06-09-desktop-event-missing-guard.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -70,6 +71,18 @@ def test_event_rendering_requires_owner_or_friend_access():
     source = EVENTS.read_text()
     assert_true("def _friendship_visible" in source, "EventHandler must interpret Facebook friend-check responses")
     assert_true(
+        "if not self.event:" in source,
+        "EventHandler must check for missing events",
+    )
+    assert_true(
+        "raise tornado.web.HTTPError(404)" in source,
+        "EventHandler must return 404 for missing events",
+    )
+    assert_true(
+        source.index("raise tornado.web.HTTPError(404)") < source.index("self.suggest = self.db.query"),
+        "EventHandler must reject missing events before querying related suggestions",
+    )
+    assert_true(
         'self.facebook_request("/me/friends/" + str(self.event[\'userid\'])' in source,
         "EventHandler must keep the Facebook friend visibility check",
     )
@@ -124,6 +137,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(SAFE_NEXT_PLAN, "safe auth next redirect")
     assert_completed_plan(EVENT_ACCESS_PLAN, "event access guard")
     assert_completed_plan(MOBILE_EVENT_ACCESS_PLAN, "mobile event access guard")
+    assert_completed_plan(DESKTOP_MISSING_EVENT_PLAN, "desktop missing event guard")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env"]:
