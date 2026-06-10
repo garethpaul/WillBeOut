@@ -27,6 +27,8 @@ Priority:
 - Validate availability event ids before reading or writing availability data
 - Validate message event and delete ids before reading or writing message data
 - Keep generated desktop metadata out of source control
+- Keep active template-side external integrations on HTTPS
+- Keep the dependency-free `make check` baseline running in GitHub Actions
 - Avoid exposing friend, event, or attendance data
 
 Next priorities:

@@ -1,6 +1,6 @@
 <div class="post">
   <div class="picture">
-    {% set author_url="http://www.facebook.com/profile.php?id=" + escape(post["from"]["id"]) %}
+    {% set author_url="https://www.facebook.com/profile.php?id=" + escape(post["from"]["id"]) %}
     <a href="{{ author_url }}"><img src="//graph.facebook.com/{{ escape(post["from"]["id"]) }}/picture?type=square"/></a>
   </div>
   <div class="body">

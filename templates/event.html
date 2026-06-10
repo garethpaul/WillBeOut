@@ -4,7 +4,7 @@
 <header class="jumbotron subhead" id="overview">
   <div class="container">
     <h1>Events</h1>
-	<p class='lead'>{{ event['place'] }} | {{ event['f'] }} to {{ event['t'] }}  <a class="btn-auth btn-facebook" href="#" onclick='postToFeed("http://willbeout.com/event?id={{ event.id }}", "{{ event.place }}", "{{ event.id }}", "{{ event.f }}", "{{ event.t }}");'>Share Event</a></p>
+	<p class='lead'>{{ event['place'] }} | {{ event['f'] }} to {{ event['t'] }}  <a class="btn-auth btn-facebook" href="#" onclick='postToFeed("https://willbeout.com/event?id={{ event.id }}", "{{ event.place }}", "{{ event.id }}", "{{ event.f }}", "{{ event.t }}");'>Share Event</a></p>
   </div>
 </header>
 <div class='container'>
@@ -259,7 +259,7 @@ $('#newtime').submit(function(){
 
 	function places(string, location){
 		$.ajax({
-		    url      : 'http://api.yelp.com/business_review_search?'
+		    url      : 'https://api.yelp.com/business_review_search?'
 				  + 'term=' + string + '&'
 	 			  + '&location=' + location
 				  + '&sort=2'
