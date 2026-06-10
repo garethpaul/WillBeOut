@@ -9,6 +9,10 @@
   when Python 2 is unavailable.
 - Replaced active template-side jQuery, Facebook, Yelp, and share/profile HTTP
   integrations with HTTPS and added static coverage.
+- Marked the signed Facebook user cookie `HttpOnly` and `Secure` so the browser
+  does not expose it to JavaScript or send it over plain HTTP.
+- Pinned hosted verification to Ubuntu 24.04 with superseded-run cancellation
+  and made Make targets independent of the caller's working directory.
 
 ## 2026-06-09
 

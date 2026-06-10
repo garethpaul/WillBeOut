@@ -54,12 +54,13 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - Run `make verify` for static auth/configuration/desktop and mobile
   event-access, missing-event, event-id, vote-id, attendee-id, and
   availability-id and message-id validation contracts, generated metadata
-  checks, plus Python 2 syntax checks.
+  checks, signed-session cookie flags, plus Python 2 syntax checks.
 - Run `make check` for the same gate with bytecode cleanup before and after.
 - GitHub Actions runs `make check` on pushes, pull requests, and manual
-  dispatches with Python 3.10, 3.12, and 3.14 under read-only permissions. The
-  legacy Python 2 syntax step runs when `python2` is installed and reports a
-  clear skip otherwise.
+  dispatches with Python 3.10, 3.12, and 3.14 on fixed Ubuntu 24.04 runners
+  under read-only permissions. Superseded branch runs are cancelled. The legacy
+  Python 2 syntax step runs when `python2` is installed and reports a clear
+  skip otherwise.
 - Completed maintenance plans live under `docs/plans` and are checked by
   `make check`.
 - Full runtime verification still requires a Python 2 compatible environment
@@ -70,6 +71,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 ## Configuration and Secrets
 
 - `COOKIE_SECRET` configures Tornado secure-cookie signing and must not be committed.
+- The signed Facebook user cookie is `HttpOnly` and `Secure`; production login
+  therefore requires HTTPS.
 - Facebook and MySQL options are read from Tornado command-line/config options; keep credentials out of git.
 
 ## Security and Privacy Notes
@@ -116,6 +119,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   template HTTPS integration coverage.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the lightweight GitHub
   Actions baseline.
+- See `docs/plans/2026-06-10-session-cookie-hardening.md` for the signed user
+  cookie and root-independent verification contract.
 
 ## Contributing
 

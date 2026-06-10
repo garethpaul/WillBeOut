@@ -25,8 +25,10 @@ MESSAGE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-message-id-va
 GENERATED_MACOS_METADATA_PLAN = ROOT / "docs" / "plans" / "2026-06-09-generated-macos-metadata.md"
 CI_PLAN = ROOT / "docs" / "plans" / "2026-06-10-ci-baseline.md"
 HTTPS_TEMPLATE_PLAN = ROOT / "docs" / "plans" / "2026-06-10-https-template-integrations.md"
+SESSION_COOKIE_PLAN = ROOT / "docs" / "plans" / "2026-06-10-session-cookie-hardening.md"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "check.yml"
 GITIGNORE = ROOT / ".gitignore"
+MAKEFILE = ROOT / "Makefile"
 
 
 def assert_true(condition, label):
@@ -49,6 +51,24 @@ def test_cookie_secret_comes_from_configuration():
     assert_true(
         "cookie_secret=options.cookie_secret" in source,
         "Tornado settings must use the configured cookie_secret option",
+    )
+
+
+def test_session_cookie_is_http_only_and_secure():
+    source = AUTH.read_text()
+    auth_callback = source.split("def _on_auth", 1)[1].split("class AuthLogoutHandler", 1)[0]
+
+    assert_true(
+        'self.set_secure_cookie(\n            "user"' in auth_callback,
+        "auth callback must set the signed user cookie",
+    )
+    assert_true(
+        "httponly=True" in auth_callback,
+        "signed user cookie must not be readable by browser JavaScript",
+    )
+    assert_true(
+        "secure=True" in auth_callback,
+        "signed user cookie must only be sent over HTTPS",
     )
 
 
@@ -329,14 +349,35 @@ def test_ci_workflow_runs_make_check():
         "python-version: ${{ matrix.python-version }}",
         "workflow_dispatch:",
         "timeout-minutes: 5",
+        "concurrency:",
+        "cancel-in-progress: true",
+        "runs-on: ubuntu-24.04",
         "make check",
     ):
         assert_true(fragment in workflow, "CI workflow must include {0}".format(fragment))
+    assert_true("ubuntu-latest" not in workflow, "CI workflow must not use a floating Ubuntu runner")
 
     readme = (ROOT / "README.md").read_text()
     assert_true("GitHub Actions" in readme, "README must document the GitHub Actions check")
     makefile = (ROOT / "Makefile").read_text()
     assert_true("Skipping legacy Python 2 syntax checks" in makefile, "Makefile must guard missing Python 2")
+
+
+def test_makefile_is_root_independent():
+    makefile = MAKEFILE.read_text()
+
+    assert_true(
+        "ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))" in makefile,
+        "Makefile must resolve the repository root",
+    )
+    assert_true(
+        "CHECK_SCRIPT := $(ROOT)/scripts/check_willbeout_contracts.py" in makefile,
+        "Makefile must use the rooted checker path",
+    )
+    assert_true(
+        '$(MAKE) -f "$(ROOT)/Makefile" clean' in makefile,
+        "recursive cleanup must use the rooted Makefile",
+    )
 
 
 def assert_completed_plan(path, label):
@@ -360,6 +401,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(GENERATED_MACOS_METADATA_PLAN, "generated macOS metadata")
     assert_completed_plan(CI_PLAN, "CI baseline")
     assert_completed_plan(HTTPS_TEMPLATE_PLAN, "HTTPS template integrations")
+    assert_completed_plan(SESSION_COOKIE_PLAN, "session cookie hardening")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -370,6 +412,7 @@ def main():
     tests = [
         test_auth_handler_has_no_stray_non_code_suffix,
         test_cookie_secret_comes_from_configuration,
+        test_session_cookie_is_http_only_and_secure,
         test_auth_next_redirects_are_local_only,
         test_event_rendering_requires_owner_or_friend_access,
         test_event_ids_are_validated_before_database_queries,
@@ -381,6 +424,7 @@ def main():
         test_generated_macos_metadata_is_not_committed,
         test_active_template_integrations_use_https,
         test_ci_workflow_runs_make_check,
+        test_makefile_is_root_independent,
         test_plan_and_cleanup_contracts_exist,
     ]
     for test in tests:

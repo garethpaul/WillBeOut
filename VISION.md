@@ -17,6 +17,8 @@ Priority:
 - Preserve event, availability, suggestion, and voting flows
 - Keep Facebook and MySQL credentials in deployment configuration
 - Keep Tornado cookie signing secrets in deployment configuration
+- Keep the signed Facebook user cookie restricted to HTTPS and inaccessible to
+  browser JavaScript
 - Treat Python 2 and old Tornado/Facebook APIs as legacy
 - Enforce owner/friend access before rendering event details
 - Enforce owner/friend access before rendering mobile event details
@@ -38,6 +40,7 @@ Next priorities:
 - Add tests for auth, event access, votes, and availability updates
 - Keep `make check` covering auth and secret-configuration contracts
 - Add runtime tests for missing-event and denied-access paths
+- Convert authenticated state-changing GET routes to POST with XSRF protection
 
 Contribution rules:
 
