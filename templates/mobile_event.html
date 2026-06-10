@@ -227,6 +227,7 @@ function getCookie(name) {
 			<div class="content-primary">
 			<h2>Event: {{event.place}}</h2> 
 			<form data-rel='external' id='newform'>
+			{% module xsrf_form_html() %}
 			<label>Add Message</label>
 			<textarea name='msg' rows="9"></textarea>
 			<input type='hidden' name='type' value='message' />
@@ -246,7 +247,8 @@ function getCookie(name) {
 		   e.preventDefault();
 		   $.post('/messages', {'msg': $('textarea[name="msg"]').val(), 
 					'type': $('input[name="type"]').val(),
-					'id': $('input[name="id"]').val()}, function(){
+					'id': $('input[name="id"]').val(),
+					'_xsrf': getCookie('_xsrf')}, function(){
 						window.location.href = '/mobile/event?id={{event['id']}}';
 					});
 		});

@@ -35,6 +35,6 @@ class AuthLoginHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
             self.redirect(self.get_safe_next_url("/events"))
 
 class AuthLogoutHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
-    def get(self):
+    def post(self):
         self.clear_cookie("user")
         self.redirect('https://www.facebook.com/logout.php')

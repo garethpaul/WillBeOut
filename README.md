@@ -56,6 +56,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   availability-id and message-id validation contracts, generated metadata
   checks, signed-session cookie flags, plus Python 2 syntax checks.
 - Run `make check` for the same gate with bytecode cleanup before and after.
+- The gate requires Tornado XSRF enforcement, POST-only state changes, and
+  token-bearing native forms and AJAX writes.
 - GitHub Actions runs `make check` on pushes, pull requests, and manual
   dispatches with Python 3.10, 3.12, and 3.14 on fixed Ubuntu 24.04 runners
   under read-only permissions. Superseded branch runs are cancelled. The legacy
@@ -121,6 +123,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   Actions baseline.
 - See `docs/plans/2026-06-10-session-cookie-hardening.md` for the signed user
   cookie and root-independent verification contract.
+- See `docs/plans/2026-06-10-xsrf-write-protection.md` for POST-only mutation
+  routes and Tornado XSRF token coverage.
 
 ## Contributing
 

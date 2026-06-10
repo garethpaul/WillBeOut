@@ -2,6 +2,9 @@
 
 ## 2026-06-10
 
+- Enabled Tornado XSRF enforcement, converted attendance, voting, message
+  deletion, and logout mutations from GET to POST, and added tokens to native
+  forms and all same-origin AJAX writes.
 - Added a pinned, read-only GitHub Actions workflow that runs `make check` on
   Python 3.10, 3.12, and 3.14 for the dependency-free Tornado handler contract
   baseline.

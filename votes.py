@@ -4,7 +4,7 @@ import tornado.web
 
 class VoteHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     @tornado.web.authenticated
-    def get(self):
+    def post(self):
         _user_id = self.get_current_user()['id']
         _user_name = self.get_current_user()['name']
         _event_id = self.get_int_argument('event_id')
@@ -27,7 +27,7 @@ class VoteHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
 
 class ChangeVoteHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     @tornado.web.authenticated
-    def get(self):
+    def post(self):
         _suggestion_id = self.get_int_argument('id')
         _event_id = self.get_int_argument('event_id')
         _user_id = self.get_current_user()['id']

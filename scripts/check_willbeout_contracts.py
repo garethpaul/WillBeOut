@@ -26,9 +26,15 @@ GENERATED_MACOS_METADATA_PLAN = ROOT / "docs" / "plans" / "2026-06-09-generated-
 CI_PLAN = ROOT / "docs" / "plans" / "2026-06-10-ci-baseline.md"
 HTTPS_TEMPLATE_PLAN = ROOT / "docs" / "plans" / "2026-06-10-https-template-integrations.md"
 SESSION_COOKIE_PLAN = ROOT / "docs" / "plans" / "2026-06-10-session-cookie-hardening.md"
+XSRF_PLAN = ROOT / "docs" / "plans" / "2026-06-10-xsrf-write-protection.md"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "check.yml"
 GITIGNORE = ROOT / ".gitignore"
 MAKEFILE = ROOT / "Makefile"
+EVENT_TEMPLATE = ROOT / "templates" / "event.html"
+BASE_TEMPLATE = ROOT / "templates" / "base.html"
+STREAM_TEMPLATE = ROOT / "templates" / "stream.html"
+MOBILE_EVENT_TEMPLATE = ROOT / "templates" / "mobile_event.html"
+EVENTS_JAVASCRIPT = ROOT / "static" / "js" / "events.js"
 
 
 def assert_true(condition, label):
@@ -69,6 +75,90 @@ def test_session_cookie_is_http_only_and_secure():
     assert_true(
         "secure=True" in auth_callback,
         "signed user cookie must only be sent over HTTPS",
+    )
+
+
+def test_state_changes_require_post_and_xsrf_tokens():
+    application_source = FACEBOOK.read_text()
+    assert_true(
+        "xsrf_cookies=True" in application_source,
+        "Tornado must enforce XSRF checks for unsafe HTTP methods",
+    )
+    assert_true(
+        "xsrf_cookies=False" not in application_source,
+        "Tornado XSRF protection must not be disabled",
+    )
+
+    mutating_handlers = (
+        (ATTENDEES, "Attend", "AttendNo"),
+        (ATTENDEES, "AttendNo", "AttendData"),
+        (VOTES, "VoteHandler", "ChangeVoteHandler"),
+        (VOTES, "ChangeVoteHandler", None),
+        (MESSAGES, "DMHandler", "MessageHandler"),
+        (AUTH, "AuthLogoutHandler", None),
+    )
+    for path, class_name, next_class in mutating_handlers:
+        source = path.read_text().split("class {0}".format(class_name), 1)[1]
+        if next_class:
+            source = source.split("class {0}".format(next_class), 1)[0]
+        assert_true(
+            "def post(self):" in source,
+            "{0} mutations must use POST".format(class_name),
+        )
+        assert_true(
+            "def get(self):" not in source,
+            "{0} must not mutate state through GET".format(class_name),
+        )
+
+    event_template = EVENT_TEMPLATE.read_text()
+    base_template = BASE_TEMPLATE.read_text()
+    stream_template = STREAM_TEMPLATE.read_text()
+    mobile_template = MOBILE_EVENT_TEMPLATE.read_text()
+    calendar_javascript = EVENTS_JAVASCRIPT.read_text()
+
+    for forbidden_href in (
+        "href='/vote",
+        "href='/change/vote",
+        "href='/attend",
+        'href="/delete/message',
+        "href='../auth/logout",
+        'href="/auth/logout',
+    ):
+        assert_true(
+            forbidden_href not in event_template + base_template + stream_template,
+            "state-changing links must not use GET: {0}".format(forbidden_href),
+        )
+
+    assert_true(
+        'action="/auth/logout" method="post"' in base_template + stream_template,
+        "logout form must use POST",
+    )
+    assert_true(
+        "data-action='/vote'" in event_template
+        and "data-action='/change/vote'" in event_template,
+        "vote controls must use explicit POST action buttons",
+    )
+    assert_true(
+        base_template.count("{% module xsrf_form_html() %}") >= 1
+        and stream_template.count("{% module xsrf_form_html() %}") >= 1
+        and mobile_template.count("{% module xsrf_form_html() %}") >= 1,
+        "logout and mobile forms must render Tornado XSRF fields",
+    )
+    assert_true(
+        event_template.count("{{ x }}") >= 2,
+        "desktop event forms must include the rendered Tornado XSRF field",
+    )
+    assert_true(
+        event_template.count("getCookie('_xsrf')") >= 3,
+        "desktop AJAX mutations must send the XSRF token",
+    )
+    assert_true(
+        mobile_template.count("'_xsrf': getCookie(") >= 2,
+        "mobile AJAX mutations must send the XSRF token",
+    )
+    assert_true(
+        '_xsrf: getCookie("_xsrf")' in calendar_javascript,
+        "calendar AJAX mutations must send the XSRF token",
     )
 
 
@@ -402,6 +492,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(CI_PLAN, "CI baseline")
     assert_completed_plan(HTTPS_TEMPLATE_PLAN, "HTTPS template integrations")
     assert_completed_plan(SESSION_COOKIE_PLAN, "session cookie hardening")
+    assert_completed_plan(XSRF_PLAN, "XSRF write protection")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -413,6 +504,7 @@ def main():
         test_auth_handler_has_no_stray_non_code_suffix,
         test_cookie_secret_comes_from_configuration,
         test_session_cookie_is_http_only_and_secure,
+        test_state_changes_require_post_and_xsrf_tokens,
         test_auth_next_redirects_are_local_only,
         test_event_rendering_requires_owner_or_friend_access,
         test_event_ids_are_validated_before_database_queries,

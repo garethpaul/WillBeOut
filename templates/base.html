@@ -10,6 +10,12 @@
 	<script type="text/javascript" src="{{ static_url("js/bootstrap-datepicker.js") }}"></script>
 	<script type="text/javascript" src="{{ static_url("js/bootstrap-calendar.js") }}"></script>
 	<script type="text/javascript" src="{{ static_url("js/feeds.js") }}"></script>
+	<script type="text/javascript">
+	function getCookie(name) {
+	    var match = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+	    return match ? match[1] : undefined;
+	}
+	</script>
 	{% block head_tag %}
 	{% end %}
   </head>
@@ -47,7 +53,7 @@
 			</span>
 		</span>
 		  <ul class="nav pull-right">
-		 	<li><a href='../auth/logout'>Logout</a></li>
+			<li><form action="/auth/logout" method="post" style="margin:0;">{% module xsrf_form_html() %}<button type="submit" class="btn btn-link">Logout</button></form></li>
 		  </ul>
 			
 			
