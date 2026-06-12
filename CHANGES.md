@@ -1,5 +1,14 @@
 # Changes
 
+## 2026-06-10
+
+- Added a lightweight GitHub Actions workflow that runs `make check` for the
+  dependency-free Tornado handler contract baseline.
+- Guarded the legacy Python 2 syntax step so hosted CI can run the baseline
+  when Python 2 is unavailable.
+- Replaced active template-side jQuery, Facebook, Yelp, and share/profile HTTP
+  integrations with HTTPS and added static coverage.
+
 ## 2026-06-09
 
 - Removed tracked macOS metadata and added static checker coverage to keep it

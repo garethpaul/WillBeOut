@@ -37,6 +37,11 @@ Helpful reports include:
   configuration. Do not replace it with a checked-in literal secret.
 - Request IDs for event, vote, attendee, availability, and message handlers
   should be validated before database access or redirects.
+- Active template-side external integrations should use HTTPS to avoid mixed
+  content and request tampering.
+- GitHub Actions runs the dependency-free `make check` baseline; review
+  workflow, checker, and template integration changes as part of the
+  supply-chain surface.
 
 ## Service and API Notes
 

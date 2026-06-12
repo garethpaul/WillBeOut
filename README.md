@@ -12,6 +12,7 @@ This README is based on the checked-in source, manifests, scripts, and repositor
 ## Repository Contents
 
 - `README`
+- `.github/workflows/check.yml` - GitHub Actions baseline for `make check`
 - `requirements.txt` - Python dependency or packaging metadata
 - `.worktrees` - source or example code
 - `Procfile`
@@ -55,6 +56,9 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   availability-id and message-id validation contracts, generated metadata
   checks, plus Python 2 syntax checks.
 - Run `make check` for the same gate with bytecode cleanup before and after.
+- GitHub Actions runs `make check` on pushes and pull requests with Python
+  3.12. The legacy Python 2 syntax step runs when `python2` is installed and
+  reports a clear skip otherwise.
 - Completed maintenance plans live under `docs/plans` and are checked by
   `make check`.
 - Full runtime verification still requires a Python 2 compatible environment
@@ -80,6 +84,9 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Do not commit generated Python bytecode, local virtual environments, or
   `.env` files.
 - Do not commit generated desktop metadata such as `.DS_Store`.
+- Active template-side external integrations use HTTPS; historical DTD,
+  namespace, and vendored license references are not treated as runtime browser
+  integrations.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `docs/plans/2026-06-08-cookie-secret-contract.md` for the current auth
@@ -104,6 +111,10 @@ When the required SDK or runtime is unavailable, use static checks and source re
   event id and delete-message id validation.
 - See `docs/plans/2026-06-09-generated-macos-metadata.md` for generated
   desktop metadata cleanup.
+- See `docs/plans/2026-06-10-https-template-integrations.md` for active
+  template HTTPS integration coverage.
+- See `docs/plans/2026-06-10-ci-baseline.md` for the lightweight GitHub
+  Actions baseline.
 
 ## Contributing
 

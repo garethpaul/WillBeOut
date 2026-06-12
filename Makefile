@@ -14,7 +14,11 @@ lint:
 
 test:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) $(CHECK_SCRIPT)
-	$(PYTHON2) -m py_compile $(PYTHON_FILES)
+	@if command -v $(PYTHON2) >/dev/null 2>&1; then \
+		$(PYTHON2) -m py_compile $(PYTHON_FILES); \
+	else \
+		echo "Skipping legacy Python 2 syntax checks: python2 is not installed."; \
+	fi
 
 build: lint
 

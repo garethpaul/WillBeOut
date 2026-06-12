@@ -23,6 +23,9 @@ ATTENDEE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-attendee-id-
 AVAILABILITY_EVENT_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-availability-event-id-validation.md"
 MESSAGE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-message-id-validation.md"
 GENERATED_MACOS_METADATA_PLAN = ROOT / "docs" / "plans" / "2026-06-09-generated-macos-metadata.md"
+CI_PLAN = ROOT / "docs" / "plans" / "2026-06-10-ci-baseline.md"
+HTTPS_TEMPLATE_PLAN = ROOT / "docs" / "plans" / "2026-06-10-https-template-integrations.md"
+CI_WORKFLOW = ROOT / ".github" / "workflows" / "check.yml"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -280,6 +283,58 @@ def test_generated_macos_metadata_is_not_committed():
     )
 
 
+def test_active_template_integrations_use_https():
+    checked_paths = [
+        ROOT / "templates" / "base.html",
+        ROOT / "templates" / "event.html",
+        ROOT / "templates" / "events.html",
+        ROOT / "templates" / "feedit.html",
+        ROOT / "templates" / "mobile_event.html",
+        ROOT / "templates" / "mobile_events.html",
+        ROOT / "templates" / "mobile_index.html",
+        ROOT / "templates" / "modules" / "post.html",
+    ]
+    combined = "\n".join(path.read_text() for path in checked_paths)
+
+    for prefix in [
+        "http://code.jquery.com",
+        "http://connect.facebook.net",
+        "http://api.yelp.com",
+        "http://www.facebook.com/profile.php",
+        "http://willbeout.com/event",
+        "http://127.0.0.1:5000/event",
+    ]:
+        assert_true(prefix not in combined, "active template integration must use HTTPS: {0}".format(prefix))
+
+    for expected in [
+        "https://code.jquery.com/jquery-1.7.1.min.js",
+        "https://code.jquery.com/mobile/1.1.1/jquery.mobile-1.1.1.min.css",
+        "https://code.jquery.com/mobile/1.1.1/jquery.mobile-1.1.1.min.js",
+        "https://connect.facebook.net/en_US/all.js",
+        "https://api.yelp.com/business_review_search?",
+        "https://www.facebook.com/profile.php?id=",
+        "https://willbeout.com/event?id=",
+    ]:
+        assert_true(expected in combined, "active template integration must stay on HTTPS: {0}".format(expected))
+
+
+def test_ci_workflow_runs_make_check():
+    assert_true(CI_WORKFLOW.is_file(), "GitHub Actions check workflow must exist")
+    workflow = CI_WORKFLOW.read_text()
+    for fragment in (
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        'python-version: "3.12"',
+        "make check",
+    ):
+        assert_true(fragment in workflow, "CI workflow must include {0}".format(fragment))
+
+    readme = (ROOT / "README.md").read_text()
+    assert_true("GitHub Actions" in readme, "README must document the GitHub Actions check")
+    makefile = (ROOT / "Makefile").read_text()
+    assert_true("Skipping legacy Python 2 syntax checks" in makefile, "Makefile must guard missing Python 2")
+
+
 def assert_completed_plan(path, label):
     assert_true(path.is_file(), "{0} plan must live under docs/plans".format(label))
     plan = path.read_text()
@@ -299,6 +354,8 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(AVAILABILITY_EVENT_ID_VALIDATION_PLAN, "availability event id validation")
     assert_completed_plan(MESSAGE_ID_VALIDATION_PLAN, "message id validation")
     assert_completed_plan(GENERATED_MACOS_METADATA_PLAN, "generated macOS metadata")
+    assert_completed_plan(CI_PLAN, "CI baseline")
+    assert_completed_plan(HTTPS_TEMPLATE_PLAN, "HTTPS template integrations")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -318,6 +375,8 @@ def main():
         test_message_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_generated_macos_metadata_is_not_committed,
+        test_active_template_integrations_use_https,
+        test_ci_workflow_runs_make_check,
         test_plan_and_cleanup_contracts_exist,
     ]
     for test in tests:
