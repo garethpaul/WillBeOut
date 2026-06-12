@@ -128,7 +128,9 @@ class ModernRuntimeTest(unittest.IsolatedAsyncioTestCase):
             {"id": "1", "name": "Ada", "access_token": "token"},
             cipher.decrypt_user(encrypted),
         )
-        self.assertIsNone(cipher.decrypt_user(encrypted[:-1] + "A"))
+        replacement = "A" if encrypted[10] != "A" else "B"
+        tampered = encrypted[:10] + replacement + encrypted[11:]
+        self.assertIsNone(cipher.decrypt_user(tampered))
 
     async def test_facebook_authentication_uses_post_and_bearer_header(self):
         http = FakeHTTPClient([
