@@ -41,11 +41,21 @@ Helpful reports include:
   should be validated before database access or redirects.
 - Active template-side external integrations should use HTTPS to avoid mixed
   content and request tampering.
+- Post-login redirects are restricted to the literal `/` and `/events`
+  destinations; do not restore arbitrary `next` values or user-agent regex
+  routing in the authentication flow.
+- Fixed-version jQuery and jQuery Mobile resources use reviewed SHA-384 SRI
+  hashes with anonymous CORS. Treat URL, version, hash, and tag-count changes
+  as supply-chain changes requiring review.
 - GitHub Actions runs the dependency-free `make check` baseline with immutable
   actions, fixed Ubuntu runners, read-only permissions, credential-free
   checkout, superseded-run cancellation, and structural policy mutations;
   review workflow, checker, and template integration changes as part of the
   supply-chain surface.
+- CodeQL analyzes actions, Python, and first-party JavaScript. Only the used
+  vendored Bootstrap 2.1.0 source is excluded, and its exact header and digest
+  are contract-checked. The legacy Python 2 dependency backlog remains a
+  separate runtime-migration risk rather than an unreviewed package bump.
 
 ## Service and API Notes
 

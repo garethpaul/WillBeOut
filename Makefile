@@ -3,7 +3,7 @@ PYTHON2 ?= python2
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CHECK_SCRIPT := $(ROOT)/scripts/check_willbeout_contracts.py
 WORKFLOW_CONTRACT_SCRIPT := $(ROOT)/scripts/test_workflow_contract.py
-PYTHON_FILES := $(addprefix $(ROOT)/,__init__.py attendees.py auth.py base.py cal.py events.py facebook.py ismobile.py messages.py mobile.py prettydate.py votes.py)
+PYTHON_FILES := $(addprefix $(ROOT)/,__init__.py attendees.py auth.py base.py cal.py events.py facebook.py messages.py mobile.py prettydate.py votes.py)
 
 .PHONY: clean lint test contract-test build verify check
 

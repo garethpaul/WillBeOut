@@ -57,13 +57,18 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   checks, signed-session cookie flags, plus Python 2 syntax checks.
 - Run `make check` for the same gate with bytecode cleanup before and after.
 - The gate requires Tornado XSRF enforcement, POST-only state changes, and
-  token-bearing native forms and AJAX writes.
+  token-bearing native forms and AJAX writes. Authentication return paths are
+  limited to the literal `/` and `/events` destinations, and fixed-version
+  jQuery resources must retain their reviewed SRI hashes.
 - GitHub Actions runs `make check` on pushes, pull requests, and manual
   dispatches with Python 3.10, 3.12, and 3.14 on fixed Ubuntu 24.04 runners
   under read-only permissions and credential-free checkout. Superseded branch
   runs are cancelled, and structural mutations protect the exact workflow
   policy. The legacy Python 2 syntax step runs when `python2` is installed and
   reports a clear skip otherwise.
+- CodeQL analyzes actions, Python, and first-party JavaScript. The only path
+  exclusion is the used vendored Bootstrap 2.1.0 source, whose version,
+  license header, and SHA-256 digest are enforced by `make check`.
 - Completed maintenance plans live under `docs/plans` and are checked by
   `make check`.
 - Full runtime verification still requires a Python 2 compatible environment
@@ -126,6 +131,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   cookie and root-independent verification contract.
 - See `docs/plans/2026-06-10-xsrf-write-protection.md` for POST-only mutation
   routes and Tornado XSRF token coverage.
+- See `docs/plans/2026-06-12-willbeout-first-party-codeql-remediation.md` for
+  the auth-return allowlist, fixed CDN integrity inventory, and CodeQL scope.
 
 ## Contributing
 

@@ -1,5 +1,17 @@
 # Changes
 
+## 2026-06-12
+
+- Restricted authentication return paths to literal `/` and `/events`
+  destinations and removed the redundant high-cost mobile user-agent regex.
+- Added reviewed SRI and anonymous CORS attributes to fixed-version jQuery and
+  jQuery Mobile resources.
+- Added immutable-pinned CodeQL analysis for actions, Python, and first-party
+  JavaScript, with an exact checksum guard around the sole vendored Bootstrap
+  exclusion.
+- Removed the unused duplicate minified Bootstrap bundle and expanded
+  `make check` contracts for the security and analysis scope.
+
 ## 2026-06-10
 
 - Enabled Tornado XSRF enforcement, converted attendance, voting, message

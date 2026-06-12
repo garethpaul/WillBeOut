@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Static safety contracts for the legacy WillBeOut Tornado app."""
+import hashlib
+import re
 from pathlib import Path
 
 from workflow_contract import validate as validate_workflow
@@ -29,7 +31,10 @@ CI_PLAN = ROOT / "docs" / "plans" / "2026-06-10-ci-baseline.md"
 HTTPS_TEMPLATE_PLAN = ROOT / "docs" / "plans" / "2026-06-10-https-template-integrations.md"
 SESSION_COOKIE_PLAN = ROOT / "docs" / "plans" / "2026-06-10-session-cookie-hardening.md"
 XSRF_PLAN = ROOT / "docs" / "plans" / "2026-06-10-xsrf-write-protection.md"
+CODEQL_PLAN = ROOT / "docs" / "plans" / "2026-06-12-willbeout-first-party-codeql-remediation.md"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "check.yml"
+CODEQL_WORKFLOW = ROOT / ".github" / "workflows" / "codeql.yml"
+CODEQL_CONFIG = ROOT / ".github" / "codeql-config.yml"
 GITIGNORE = ROOT / ".gitignore"
 MAKEFILE = ROOT / "Makefile"
 EVENT_TEMPLATE = ROOT / "templates" / "event.html"
@@ -37,6 +42,7 @@ BASE_TEMPLATE = ROOT / "templates" / "base.html"
 STREAM_TEMPLATE = ROOT / "templates" / "stream.html"
 MOBILE_EVENT_TEMPLATE = ROOT / "templates" / "mobile_event.html"
 EVENTS_JAVASCRIPT = ROOT / "static" / "js" / "events.js"
+VENDORED_BOOTSTRAP = ROOT / "static" / "js" / "bootstrap.js"
 
 
 def assert_true(condition, label):
@@ -169,14 +175,9 @@ def test_auth_next_redirects_are_local_only():
     auth_source = AUTH.read_text()
 
     assert_true("def get_safe_next_url" in base_source, "BaseHandler must expose a safe next-url helper")
-    assert_true(
-        'next_url.startswith("/")' in base_source,
-        "safe next-url helper must allow only site-local absolute paths",
-    )
-    assert_true(
-        'not next_url.startswith("//")' in base_source,
-        "safe next-url helper must reject protocol-relative redirects",
-    )
+    assert_true('next_url == "/"' in base_source, "safe next-url helper must explicitly allow the home path")
+    assert_true('next_url == "/events"' in base_source, "safe next-url helper must explicitly allow the events path")
+    assert_true("return next_url" not in base_source, "safe next-url helper must return only literal allowlisted paths")
     assert_true(
         'self.redirect(self.get_argument("next"' not in auth_source,
         "auth callback must not redirect directly to a next argument",
@@ -189,6 +190,15 @@ def test_auth_next_redirects_are_local_only():
         "tornado.escape.url_escape(next_url)" in auth_source,
         "auth login URL must carry the sanitized next path",
     )
+    assert_true("from ismobile import check" not in auth_source, "auth must not use the redundant mobile detector")
+    assert_true("check(user_agent)" not in auth_source, "auth must not evaluate the legacy mobile regex")
+    assert_true(not (ROOT / "ismobile.py").exists(), "the unused high-cost mobile detector must remain removed")
+
+    for template_path in [ROOT / "templates" / "index.html", ROOT / "templates" / "mobile_index.html"]:
+        assert_true(
+            'href="/auth/login?next=/events"' in template_path.read_text(),
+            "login links must request the literal /events destination",
+        )
 
 
 def test_event_rendering_requires_owner_or_friend_access():
@@ -430,6 +440,81 @@ def test_active_template_integrations_use_https():
         assert_true(expected in combined, "active template integration must stay on HTTPS: {0}".format(expected))
 
 
+def test_fixed_cdn_resources_use_reviewed_integrity():
+    expected = {
+        "https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js": (
+            "sha384-SDFvKZaD/OapoAVqhWJM8vThqq+NQWczamziIoxiMYVNrVeUUrf2zhbsFvuHOrAh",
+            3,
+        ),
+        "https://code.jquery.com/jquery-1.7.1.min.js": (
+            "sha384-npxfGiG5C/F5X72RqcKFYSfzr1AXsDiu1YC/ydsOrS+jL554Jh4zFAx9GpQi4lXQ",
+            3,
+        ),
+        "https://code.jquery.com/mobile/1.1.1/jquery.mobile-1.1.1.min.css": (
+            "sha384-31ymrrslLx0ofx2q0EHCjIS4EP7kb0vHWi50Seb913TPXArCPyCsfuH5FnNkFWt3",
+            3,
+        ),
+        "https://code.jquery.com/mobile/1.1.1/jquery.mobile-1.1.1.min.js": (
+            "sha384-t8aBsXwe6RT0fl56nhrEIGVQMFx4cLjxUzir5ez5nuk4WoLAk1Lov2O3H+jGrT+Y",
+            3,
+        ),
+    }
+    template_source = "\n".join(path.read_text() for path in (ROOT / "templates").glob("*.html"))
+    resource_tags = re.findall(
+        r'<(?:script|link)\b[^>]*(?:src|href)="(https://(?:ajax\.googleapis\.com|code\.jquery\.com)/[^\"]+)"[^>]*>',
+        template_source,
+    )
+    assert_true(len(resource_tags) == 12, "fixed CDN resource inventory must contain exactly twelve reviewed tags")
+    for resource_url, (integrity, expected_count) in expected.items():
+        matching_tags = re.findall(
+            r'<(?:script|link)\b[^>]*(?:src|href)="{0}"[^>]*>'.format(re.escape(resource_url)),
+            template_source,
+        )
+        assert_true(len(matching_tags) == expected_count, "unexpected fixed CDN resource count: {0}".format(resource_url))
+        for tag in matching_tags:
+            assert_true('integrity="{0}"'.format(integrity) in tag, "fixed CDN resource hash drift: {0}".format(resource_url))
+            assert_true('crossorigin="anonymous"' in tag, "fixed CDN resource must use anonymous CORS: {0}".format(resource_url))
+
+
+def test_codeql_analyzes_first_party_sources_only():
+    workflow = CODEQL_WORKFLOW.read_text()
+    config = CODEQL_CONFIG.read_text()
+    expected_actions = [
+        "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10",
+        "github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e",
+        "github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e",
+    ]
+    actions = re.findall(r"^\s*uses:\s*([^\s#]+)", workflow, re.MULTILINE)
+
+    for contract in [
+        "security-events: write",
+        "runs-on: ubuntu-24.04",
+        "timeout-minutes: 10",
+        "language: [actions, python, javascript-typescript]",
+        "build-mode: none",
+        "config-file: ./.github/codeql-config.yml",
+        "persist-credentials: false",
+        "schedule:",
+        "workflow_dispatch:",
+        "cancel-in-progress: true",
+    ]:
+        assert_true(contract in workflow, "CodeQL must keep contract: {0}".format(contract))
+    assert_true(actions == expected_actions, "CodeQL must use only reviewed immutable actions")
+    assert_true("pull_request_target" not in workflow, "CodeQL must not use privileged pull-request execution")
+    assert_true(config == "paths-ignore:\n  - static/js/bootstrap.js\n", "CodeQL exclusion must remain limited to vendored Bootstrap")
+    assert_true(not (ROOT / "static" / "js" / "bootstrap.min.js").exists(), "unused duplicate Bootstrap bundle must remain removed")
+
+    vendor_source = VENDORED_BOOTSTRAP.read_bytes()
+    assert_true(b"bootstrap-transition.js v2.1.0" in vendor_source, "vendored Bootstrap version header must remain explicit")
+    assert_true(b"Licensed under the Apache License, Version 2.0" in vendor_source, "vendored Bootstrap license header must remain explicit")
+    assert_true(
+        hashlib.sha256(vendor_source).hexdigest() == "192b8b38dda340e751ab5b5272a5f783b45ff76c698642bec552f0e2ddd70fce",
+        "vendored Bootstrap checksum changed without reviewed analysis scope",
+    )
+    workflow_inventory = sorted(path.name for path in (ROOT / ".github" / "workflows").glob("*.yml"))
+    assert_true(workflow_inventory == ["check.yml", "codeql.yml"], "workflow inventory must contain only Check and CodeQL")
+
+
 def test_ci_workflow_runs_make_check():
     assert_true(CI_WORKFLOW.is_file(), "GitHub Actions check workflow must exist")
     workflow = CI_WORKFLOW.read_text()
@@ -483,6 +568,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(HTTPS_TEMPLATE_PLAN, "HTTPS template integrations")
     assert_completed_plan(SESSION_COOKIE_PLAN, "session cookie hardening")
     assert_completed_plan(XSRF_PLAN, "XSRF write protection")
+    assert_completed_plan(CODEQL_PLAN, "first-party CodeQL remediation")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -505,6 +591,8 @@ def main():
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_generated_macos_metadata_is_not_committed,
         test_active_template_integrations_use_https,
+        test_fixed_cdn_resources_use_reviewed_integrity,
+        test_codeql_analyzes_first_party_sources_only,
         test_ci_workflow_runs_make_check,
         test_makefile_is_root_independent,
         test_plan_and_cleanup_contracts_exist,

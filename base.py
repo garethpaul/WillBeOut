@@ -15,9 +15,13 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def get_safe_next_url(self, default="/events"):
         next_url = self.get_argument("next", default)
-        if next_url and next_url.startswith("/") and not next_url.startswith("//"):
-            return next_url
-        return default
+        if next_url == "/":
+            return "/"
+        if next_url == "/events":
+            return "/events"
+        if default == "/":
+            return "/"
+        return "/events"
 
     def get_int_argument(self, name):
         value = self.get_argument(name)
