@@ -46,4 +46,13 @@ without a broader Tornado/database/runtime migration.
   passthrough, mobile-detector restoration, missing SRI, a broader CodeQL
   exclusion, vendored Bootstrap checksum drift, a mutable action reference,
   and an extra workflow.
-- Hosted CodeQL evidence remains the final pre-merge gate.
+- Exact implementation head `0aecde0356502e40d12947fae5d1061d0e69e1ff`
+  passed pull-request Check run `27427187249` on Python 3.10, 3.12, and
+  3.14, and CodeQL run `27427187289` for actions, Python, and
+  JavaScript/TypeScript.
+- The implementation-head branch and pull-request refs reported zero open
+  CodeQL alerts and zero secret-scanning alerts. The 14 legacy Python 2
+  Dependabot alerts remain explicitly deferred to a supported-runtime and
+  dependency migration.
+- Strict `master` branch protection now requires the three Check and three
+  CodeQL contexts; PR #6 was open, clean, and mergeable after the update.
