@@ -14,6 +14,7 @@ before review.
 - Run the existing contract checker in GitHub Actions.
 - Keep the hosted runner job useful without requiring Python 2.
 - Make the CI workflow presence part of the checked repository contract.
+- Disable checkout credential persistence and test workflow policy structurally.
 
 ## Work Completed
 
@@ -22,6 +23,9 @@ before review.
 - Run the dependency-free contract checker on Python 3.10, 3.12, and 3.14.
 - Pin actions to immutable revisions, grant only read access, bound jobs to five
   minutes, and retain manual dispatch for maintenance checks.
+- Disable checkout credential persistence and add 17 dependency-free hostile
+  mutations for credentials, permissions, triggers, actions, matrix coverage,
+  runtime bounds, dependency installation, and the canonical gate.
 - Guarded the legacy Python 2 syntax check so it runs when Python 2 is present
   and reports a clear skip otherwise.
 - Extended `scripts/check_willbeout_contracts.py` to require the CI workflow
@@ -32,6 +36,7 @@ before review.
 
 - `make check`
 - `python3 scripts/check_willbeout_contracts.py`
+- `python3 -B scripts/test_workflow_contract.py`
 - `git diff --check`
 
 ## Follow-Up Candidates

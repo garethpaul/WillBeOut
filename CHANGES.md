@@ -1,5 +1,17 @@
 # Changes
 
+## 2026-06-12
+
+- Restricted authentication return paths to literal `/` and `/events`
+  destinations and removed the redundant high-cost mobile user-agent regex.
+- Added reviewed SRI and anonymous CORS attributes to fixed-version jQuery and
+  jQuery Mobile resources.
+- Added immutable-pinned CodeQL analysis for actions, Python, and first-party
+  JavaScript, with an exact checksum guard around the sole vendored Bootstrap
+  exclusion.
+- Removed the unused duplicate minified Bootstrap bundle and expanded
+  `make check` contracts for the security and analysis scope.
+
 ## 2026-06-10
 
 - Enabled Tornado XSRF enforcement, converted attendance, voting, message
@@ -7,7 +19,9 @@
   forms and all same-origin AJAX writes.
 - Added a pinned, read-only GitHub Actions workflow that runs `make check` on
   Python 3.10, 3.12, and 3.14 for the dependency-free Tornado handler contract
-  baseline.
+  baseline with credential-free checkout.
+- Added dependency-free workflow tests that reject contradictory credentials,
+  write permissions, unreviewed actions, and weakened CI commands.
 - Guarded the legacy Python 2 syntax step so hosted CI can run the baseline
   when Python 2 is unavailable.
 - Replaced active template-side jQuery, Facebook, Yelp, and share/profile HTTP

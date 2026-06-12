@@ -2,9 +2,6 @@ import base
 import tornado.auth
 import tornado.escape
 import tornado.web
-import auth
-import re
-from ismobile import check
 
 class AuthLoginHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     @tornado.web.asynchronous
@@ -27,12 +24,7 @@ class AuthLoginHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
             raise tornado.web.HTTPError(500, "Facebook auth failed")
         self.set_secure_cookie(
             "user", tornado.escape.json_encode(user), httponly=True, secure=True)
-        #magic redirect to mobile if mobile or desktop if desktop
-        user_agent = self.request.headers.get("User-Agent")
-        if check(user_agent) == 1:
-            self.redirect(self.get_safe_next_url("/events"))
-        else:
-            self.redirect(self.get_safe_next_url("/events"))
+        self.redirect(self.get_safe_next_url("/events"))
 
 class AuthLogoutHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     def post(self):
