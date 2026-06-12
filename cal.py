@@ -1,8 +1,7 @@
-import tornado.auth
 import tornado.web
 import base
 import json
-from cgi import escape
+from html import escape
 
 
 class CalHandler(base.BaseHandler):
@@ -33,7 +32,7 @@ class CalHandler(base.BaseHandler):
             for i in self.db.query(
                 "SELECT * FROM willbeout_times WHERE user_id = %s AND week = %s",
                     escape(_user_id), _wk):
-                _json.append({'day': str(i.day), 'month': i.month, 'hour':
-                             i.hour, 'date': i.d, 'string': str(i.string)})
+                _json.append({'day': str(i['day']), 'month': i['month'], 'hour':
+                             i['hour'], 'date': i['d'], 'string': str(i['string'])})
 
             self.write(json.dumps(_json))

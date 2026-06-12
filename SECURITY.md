@@ -35,16 +35,38 @@ Helpful reports include:
 - Dependency manifests detected: requirements.txt. Dependency updates should preserve lockfiles when present and avoid introducing packages without a clear maintenance reason.
 - Tornado secure-cookie signing should use `COOKIE_SECRET` from deployment
   configuration. Do not replace it with a checked-in literal secret.
-- The signed Facebook user cookie contains authentication data and must remain
-  `HttpOnly` and `Secure`, so production authentication requires HTTPS.
+- The signed Facebook user cookie contains Fernet-encrypted authentication data
+  and must remain `HttpOnly`, `Secure`, and `SameSite=Lax`. Signing alone is not
+  confidentiality; `SESSION_ENCRYPTION_KEY` must remain separate from
+  `COOKIE_SECRET` and out of source control.
+- OAuth callbacks must use the configured HTTPS `FACEBOOK_REDIRECT_URI`, bind a
+  high-entropy state value to a secure cookie, and retain the local-only next
+  redirect allowlist.
+- Meta Graph requests must use HTTPS bearer headers, bounded timeouts and
+  response sizes, and generic errors that exclude tokens and response bodies.
+- PyMySQL queries must keep SQL and parameters separate, roll back failed
+  writes, and close connections on all paths.
+- Tornado template autoescaping must remain enabled; only generated XSRF form
+  markup may use explicit raw rendering.
 - Request IDs for event, vote, attendee, availability, and message handlers
   should be validated before database access or redirects.
 - Active template-side external integrations should use HTTPS to avoid mixed
   content and request tampering.
-- GitHub Actions runs the dependency-free `make check` baseline with immutable
-  actions, fixed Ubuntu runners, read-only permissions, and superseded-run
-  cancellation; review workflow, checker, and template integration changes as
-  part of the supply-chain surface.
+- Post-login redirects are restricted to the literal `/` and `/events`
+  destinations; do not restore arbitrary `next` values or user-agent regex
+  routing in the authentication flow.
+- Fixed-version jQuery and jQuery Mobile resources use reviewed SHA-384 SRI
+  hashes with anonymous CORS. Treat URL, version, hash, and tag-count changes
+  as supply-chain changes requiring review.
+- GitHub Actions installs the exact production lock and runs `make check` with
+  immutable actions, fixed Ubuntu runners, read-only permissions,
+  credential-free checkout, superseded-run cancellation, and structural policy mutations;
+  review workflow, checker, and template integration changes as part of the
+  supply-chain surface.
+- CodeQL analyzes actions, Python, and first-party JavaScript. Only the used
+  vendored Bootstrap 2.1.0 source is excluded, and its exact header and digest
+  are contract-checked. A separate pinned job audits the resolved production
+  graph. Live Meta and MySQL behavior remains a credentialed test boundary.
 
 ## Service and API Notes
 

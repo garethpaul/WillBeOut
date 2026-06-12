@@ -1,0 +1,127 @@
+# Modern Python Web Runtime
+
+status: completed
+
+## Context
+
+The application is a Python 2-era Tornado/Facebook/MySQL sample whose direct
+manifest currently exposes fourteen GitHub Dependabot alerts: nine Tornado
+advisories, three Gunicorn advisories, one simplejson advisory, and one older
+Tornado advisory duplicated across the current vulnerable range. The secure
+floors are Tornado 6.5.5, Gunicorn 22.0.0, and simplejson 2.6.1.
+
+This is not a safe pin-only update. Tornado 6 removed `tornado.database`, the
+`@tornado.web.asynchronous` callback lifecycle, and the legacy
+`FacebookGraphMixin` integration used throughout the application. The source
+also contains Python 2 print statements and `urllib` APIs, while the manifest
+contains obsolete Python 2-only packages such as MySQL-python and wsgiref.
+
+## Priority
+
+Eliminate the known direct-dependency exposure by migrating first-party code
+to a supported Python 3 and Tornado runtime with executable no-network tests.
+Do not claim advisory remediation until the application imports, starts with
+injected fakes, and preserves its existing authorization and XSRF contracts.
+
+## Prioritized Work
+
+1. Establish Python 3.12 syntax, exact modern direct pins, a resolved lock, and
+   a dependency audit without weakening the existing static security gates.
+2. Replace `tornado.database` with a narrow injected database interface backed
+   by a maintained MySQL driver and preserve parameterized query behavior.
+3. Replace callback-only Tornado handlers and removed asynchronous decorators
+   with supported synchronous or `async def` request lifecycles.
+4. Replace the removed Facebook mixin with a bounded explicit Graph client and
+   OAuth flow that validates state, redirect targets, response types, timeouts,
+   and error handling without logging tokens or response bodies.
+5. Add executable application/handler tests with fake database and Facebook
+   clients before changing the deployment command or closing alerts.
+
+## Requirements
+
+- R1. Target Python 3.12 and pin Tornado 6.5.5 or newer, Gunicorn 22.0.0 or
+  newer, and maintained direct dependencies exactly; remove unused or
+  standard-library packages from runtime requirements.
+- R2. Commit an exact resolved production lock and require `pip check` plus a
+  pinned `pip-audit` job to report zero known vulnerabilities.
+- R3. Make every first-party Python module compile and import on Python 3.12
+  without credentials or network access.
+- R4. Replace `tornado.database` and MySQL-python with an injected database
+  boundary whose real adapter uses parameterized operations and closes
+  connections predictably.
+- R5. Remove `@tornado.web.asynchronous`, Python 2 print statements, and Python
+  2 `urllib` calls while preserving request completion and redirect behavior.
+- R6. Replace `FacebookGraphMixin` with an explicit client. OAuth state must be
+  bound to the secure session, next redirects must remain local-only, HTTP
+  calls must use HTTPS with bounded timeouts, and tokens or payloads must not
+  appear in errors or logs.
+- R7. Preserve secure, HTTP-only session cookies, XSRF protection for writes,
+  integer ID validation, owner/friend access checks, HTTPS integrations, and
+  the existing first-party CodeQL exclusions.
+- R8. Add dependency-injected no-network tests for application startup,
+  authentication decisions, Graph failures, database queries/writes, route
+  methods, XSRF behavior, and error redaction.
+- R9. Update README, security, vision, changes, contributor guidance, and this
+  plan with actual completed work and exact local/hosted evidence.
+
+## Scope Boundaries
+
+- Do not contact Facebook/Meta, MySQL, or any deployed environment from local
+  or hosted verification.
+- Do not preserve removed Tornado APIs through local compatibility shims that
+  merely hide an untested migration.
+- Do not merge or close pull requests #2, #4, or #6 without explicit owner
+  authorization.
+- Do not weaken the current static first-party security checker or CodeQL
+  exclusion boundary.
+
+## Verification
+
+- all first-party modules compile and import under Python 3.12
+- focused fake-client application and handler tests
+- `make lint`, `make test`, `make build`, and `make check`
+- clean lock install, `pip check`, and zero-vulnerability dependency audit
+- hostile mutations for legacy pins/APIs, unsafe OAuth state, nonlocal
+  redirects, unbounded HTTP, raw token errors, SQL interpolation, XSRF bypass,
+  and weakened static evidence
+- `git diff --check`
+- successful exact-head pull-request, dependency-audit, and CodeQL runs; branch
+  pushes intentionally do not trigger because the workflow limits `push` to
+  `master`
+
+## Work Completed
+
+- Replaced the six-package Python 2 manifest with exact Tornado 6.5.6,
+  PyMySQL 1.2.0, and cryptography 48.0.0 direct pins plus a five-package
+  production lock.
+- Converted all first-party modules to Python 3 syntax and supported Tornado 6
+  request lifecycles.
+- Replaced `tornado.database` with a parameterized PyMySQL adapter that rolls
+  back failures and closes every connection.
+- Replaced the removed Facebook mixin with an explicit Graph API v24.0 client
+  using a configured HTTPS callback, OAuth state binding, bearer headers,
+  finite timeouts, disabled redirects, a 1 MiB response limit, and redacted
+  errors.
+- Added Fernet encryption for access tokens before signed-cookie storage,
+  bounded cookie lifetimes, exact friend-ID checks, and template autoescaping.
+- Added ten executable no-network runtime tests, expanded the static checker to
+  20 contracts, and expanded workflow validation to 18 hostile mutations.
+
+## Verification Completed
+
+- All first-party modules compiled and imported under Python 3.12 without
+  credentials or network access.
+- `make lint`, `make test`, `make build`, and `make check` passed.
+- The exact lock passed `pip check` and `pip-audit -r requirements.lock`
+  reported no known vulnerabilities.
+- `git diff --check` passed with no generated Python bytecode retained.
+- Exact-head pull-request Check run `27432092033` passed Python 3.10, 3.12,
+  and 3.14 plus the dependency-audit job at
+  `0c3ce2bda13684c1d6c4cdac69ca15223263766d`.
+- Exact-head CodeQL run `27432092095` passed Actions, Python, and
+  JavaScript/TypeScript analysis at the same head.
+- All eight exact-head checks reported zero annotations. Branch and PR-ref code
+  scanning and repository secret scanning reported zero open alerts.
+- Pull request #7 was OPEN, CLEAN, and MERGEABLE at the exact head. The
+  fourteen default-branch Dependabot alerts remain visible until the open PR
+  is merged.

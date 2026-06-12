@@ -5,127 +5,128 @@
 
 ## Overview
 
-`garethpaul/WillBeOut` is a Python web API or service project. This is the repo for willbeout.com
+WillBeOut is a Tornado event-coordination application with Meta login and
+MySQL persistence. The maintained runtime targets Python 3.10 or newer,
+Tornado 6.5.6, PyMySQL 1.2.0, and an explicit Meta Graph API v24.0 boundary.
 
-This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Python (24), JavaScript (12), shell (1).
+The repository keeps live services outside automated tests. Fake database,
+HTTP, Graph, and session dependencies exercise the runtime without credentials
+or network access.
 
 ## Repository Contents
 
-- `README`
-- `.github/workflows/check.yml` - GitHub Actions baseline for `make check`
-- `requirements.txt` - Python dependency or packaging metadata
-- `.worktrees` - source or example code
-- `Procfile`
-- `SECURITY.md` - security reporting and disclosure guidance
-- `static` - source or example code
-- `templates` - source or example code
-- `VISION.md` - project direction and maintenance guardrails
-
-Additional scan context:
-
-- Source directories: .worktrees, static, templates
-- Dependency and build manifests: Procfile, requirements.txt
-- Entry points or build surfaces: none detected
-- Test-looking files: no obvious test files detected
+- `facebook.py` - application entry point and route configuration
+- `database.py` - parameterized PyMySQL adapter
+- `facebook_client.py` - bounded HTTPS OAuth and Graph client
+- `session.py` - Fernet encryption for browser-session authentication data
+- `test_modern_runtime.py` - executable no-network runtime tests
+- `scripts/` - static and workflow mutation contracts
+- `requirements.txt` - exact direct dependency pins
+- `requirements.lock` - exact resolved production graph
+- `templates/` and `static/` - server-rendered UI and local assets
+- `docs/plans/` - completed and active engineering plans
 
 ## Getting Started
 
 ### Prerequisites
 
 - Git
-- Python matching the era of the project
+- Python 3.10 or newer
 
 ### Setup
 
 ```bash
 git clone https://github.com/garethpaul/WillBeOut.git
 cd WillBeOut
-python -m pip install -r requirements.txt
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.lock
 ```
 
-The setup commands above are derived from repository files. Legacy mobile, Python, or JavaScript samples may require older SDKs or package versions than a modern workstation uses by default.
+The exact graph should pass:
 
-## Running or Using the Project
+```bash
+python -m pip check
+pip-audit -r requirements.lock
+```
 
-- Run `python facebook.py --cookie_secret="$COOKIE_SECRET"` after installing dependencies and configuring Facebook/MySQL options.
+## Configuration
+
+Required production values:
+
+- `COOKIE_SECRET` signs Tornado cookies.
+- `SESSION_ENCRYPTION_KEY` encrypts Meta access tokens before signed-cookie
+  storage. Generate it with
+  `python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'`.
+- `FACEBOOK_API_KEY` and `FACEBOOK_SECRET` identify the Meta application.
+- `FACEBOOK_REDIRECT_URI` is the exact registered HTTPS callback ending in
+  `/auth/login`; request Host headers are not used to construct it.
+- `FACEBOOK_GRAPH_VERSION` defaults to the reviewed `v24.0` boundary.
+- `MYSQL_HOST`, `MYSQL_DATABASE`, `MYSQL_USER`, and `MYSQL_PASSWORD` configure
+  persistence.
+
+Run locally after configuring an isolated Meta app and database:
+
+```bash
+python3 facebook.py --port=5000
+```
+
+The `Procfile` uses the same Python 3 entry point.
 
 ## Testing and Verification
 
-- Run `make verify` for static auth/configuration/desktop and mobile
-  event-access, missing-event, event-id, vote-id, attendee-id, and
-  availability-id and message-id validation contracts, generated metadata
-  checks, signed-session cookie flags, plus Python 2 syntax checks.
-- Run `make check` for the same gate with bytecode cleanup before and after.
-- The gate requires Tornado XSRF enforcement, POST-only state changes, and
-  token-bearing native forms and AJAX writes.
-- GitHub Actions runs `make check` on pushes, pull requests, and manual
-  dispatches with Python 3.10, 3.12, and 3.14 on fixed Ubuntu 24.04 runners
-  under read-only permissions. Superseded branch runs are cancelled. The legacy
-  Python 2 syntax step runs when `python2` is installed and reports a clear
-  skip otherwise.
-- Completed maintenance plans live under `docs/plans` and are checked by
-  `make check`.
-- Full runtime verification still requires a Python 2 compatible environment
-  for the legacy Tornado and MySQL dependencies.
+- `make lint` compiles every first-party Python module and the static checker.
+- `make test` runs 20 static contracts and the executable no-network runtime
+  tests.
+- `make contract-test` rejects workflow policy regressions.
+- `make build`, `make verify`, and `make check` provide stable repository gates.
+- `make check` removes Python bytecode before and after verification.
 
-When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
+GitHub Actions installs the exact lock and runs `make check` on Python 3.10,
+3.12, and 3.14 under read-only permissions on Ubuntu 24.04. A separate Python
+3.12 job runs the pinned resolved dependency audit. CodeQL analyzes Actions,
+Python, and first-party JavaScript; only reviewed vendored Bootstrap is
+excluded.
 
-## Configuration and Secrets
+Hosted verification does not contact Meta or MySQL. Live OAuth, Graph friend
+access, schema compatibility, and deployed database behavior require an
+isolated credentialed smoke test.
 
-- `COOKIE_SECRET` configures Tornado secure-cookie signing and must not be committed.
-- The signed Facebook user cookie is `HttpOnly` and `Secure`; production login
-  therefore requires HTTPS.
-- Facebook and MySQL options are read from Tornado command-line/config options; keep credentials out of git.
+## Security Contracts
 
-## Security and Privacy Notes
-
-- Review changes touching authentication or token handling; examples from the scan include .worktrees/fix/issue-1-cookie-secret/attendees.py, .worktrees/fix/issue-1-cookie-secret/auth.py, .worktrees/fix/issue-1-cookie-secret/base.py, .worktrees/fix/issue-1-cookie-secret/cal.py, and 6 more.
-- Review changes touching external API calls or credential-adjacent configuration; examples from the scan include .worktrees/fix/issue-1-cookie-secret/auth.py, .worktrees/fix/issue-1-cookie-secret/events.py, .worktrees/fix/issue-1-cookie-secret/static/css/bootstrap-responsive.css, .worktrees/fix/issue-1-cookie-secret/static/css/bootstrap-responsive.min.css, and 6 more.
-- Review changes touching network requests, sockets, or service endpoints; examples from the scan include .worktrees/fix/issue-1-cookie-secret/attendees.py, .worktrees/fix/issue-1-cookie-secret/auth.py, .worktrees/fix/issue-1-cookie-secret/base.py, .worktrees/fix/issue-1-cookie-secret/cal.py, and 6 more.
-- Review changes touching file, media, JSON, XML, CSV, OCR, or data parsing; examples from the scan include .worktrees/fix/issue-1-cookie-secret/attendees.py, .worktrees/fix/issue-1-cookie-secret/cal.py, .worktrees/fix/issue-1-cookie-secret/events.py, .worktrees/fix/issue-1-cookie-secret/facebook.py, and 6 more.
-- Review changes touching database, model, or persistence code; examples from the scan include .worktrees/fix/issue-1-cookie-secret/requirements.txt, requirements.txt.
+- User, OAuth-state, and OAuth-next cookies are `HttpOnly`, `Secure`, and
+  `SameSite=Lax`; OAuth cookies expire after ten minutes and the encrypted user
+  session after one day.
+- Meta access tokens are encrypted with Fernet before entering signed cookies;
+  signing alone is not treated as confidentiality.
+- OAuth callbacks validate high-entropy state and redirect only to literal `/`
+  or `/events` paths.
+- Graph calls use HTTPS bearer headers, finite timeouts, disabled redirects, a
+  1 MiB response limit, and generic errors that exclude tokens and response
+  bodies.
+- Owner/friend checks require an exact matching friend ID.
+- PyMySQL operations keep SQL and parameters separate, roll back failed writes,
+  and close every connection.
+- Tornado XSRF checks protect writes, and state changes remain POST-only.
+- Templates use Tornado autoescaping; only generated XSRF form markup is
+  rendered explicitly as raw HTML.
+- Cookie, session, Meta, and MySQL secrets must never be committed.
 
 ## Maintenance Notes
 
-- Do not commit generated Python bytecode, local virtual environments, or
-  `.env` files.
-- Do not commit generated desktop metadata such as `.DS_Store`.
-- Active template-side external integrations use HTTPS; historical DTD,
-  namespace, and vendored license references are not treated as runtime browser
-  integrations.
-- See `SECURITY.md` for vulnerability reporting and safe research guidance.
-- See `VISION.md` for project direction and contribution guardrails.
-- See `docs/plans/2026-06-08-cookie-secret-contract.md` for the current auth
-  and cookie-secret baseline.
-- See `docs/plans/2026-06-08-safe-auth-next-redirect.md` for the safe
-  post-login redirect contract.
-- See `docs/plans/2026-06-08-event-access-guard.md` for the event owner/friend
-  render guard.
-- See `docs/plans/2026-06-09-mobile-event-access-guard.md` for the mobile
-  event owner/friend render guard.
-- See `docs/plans/2026-06-09-desktop-event-missing-guard.md` for the desktop
-  event missing-record guard.
-- See `docs/plans/2026-06-09-event-id-validation.md` for desktop and mobile
-  event id validation.
-- See `docs/plans/2026-06-09-vote-id-validation.md` for vote and change-vote
-  request id validation.
-- See `docs/plans/2026-06-09-attendee-id-validation.md` for attendance request
-  event id validation.
-- See `docs/plans/2026-06-09-availability-event-id-validation.md` for
-  availability request event id validation.
-- See `docs/plans/2026-06-09-message-id-validation.md` for message request
-  event id and delete-message id validation.
-- See `docs/plans/2026-06-09-generated-macos-metadata.md` for generated
-  desktop metadata cleanup.
-- See `docs/plans/2026-06-10-https-template-integrations.md` for active
-  template HTTPS integration coverage.
-- See `docs/plans/2026-06-10-ci-baseline.md` for the lightweight GitHub
-  Actions baseline.
-- See `docs/plans/2026-06-10-session-cookie-hardening.md` for the signed user
-  cookie and root-independent verification contract.
-- See `docs/plans/2026-06-10-xsrf-write-protection.md` for POST-only mutation
-  routes and Tornado XSRF token coverage.
+- See `SECURITY.md` for reporting and safe research guidance.
+- See `VISION.md` for product direction and contribution guardrails.
+- See `docs/plans/2026-06-12-modern-python-web-runtime.md` for the Python 3,
+  Tornado, database, OAuth, encrypted-session, and dependency migration.
+- See `docs/plans/2026-06-12-willbeout-first-party-codeql-remediation.md`
+  for the first-party CodeQL alert remediation.
+- Earlier plans under `docs/plans/` preserve the event access, integer ID,
+  XSRF, secure-cookie, HTTPS integration, and CI decisions enforced by
+  `make check`.
 
 ## Contributing
 
-Keep changes small and tied to the project that is already present in this repository. For code changes, document the toolchain used, avoid committing generated dependency directories or local configuration, and update this README when setup or verification steps change.
+Keep changes focused, preserve the no-network verification path, update the
+relevant plan and contracts with behavior changes, and run `make check` before
+handoff. Do not claim live Meta or MySQL behavior without an isolated
+credentialed verification record.

@@ -1,20 +1,17 @@
-import tornado.auth
 import tornado.web
 import base
 import json
-import urllib
+from urllib.parse import unquote
 
 
-class EventHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
+class EventHandler(base.BaseHandler):
     @tornado.web.authenticated
-    @tornado.web.asynchronous
-    def get(self):
+    async def get(self):
         # access trigger
         self.access = 0
         _eventid = self.get_int_argument('event_id')
         _id = self.get_current_user()['id']
         # get owner_id
-        print 'checkpoint 1'
         self.event = self.db.get(
             "SELECT * FROM willbeout_events WHERE id = %s", _eventid)
         if not self.event:
@@ -26,31 +23,36 @@ class EventHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
         self.votes = self.db.query("""select suggestion_id from willbeout_votes where event_id = %s and user_id = %s group by suggestion_id;
         """, _eventid, int(_id))
 
-        if str(self.event['userid']).strip('L') == _id:
+        owner_id = str(self.event['userid'])
+        if owner_id == _id:
             self.access = 1
-        self.facebook_request("/me/friends/" + str(self.event['userid']), self
-            ._go, access_token=self.current_user["access_token"])
+        streams = await self.facebook_request(
+            "/me/friends", self.current_user["access_token"], fields="id", limit=500
+        )
+        self._go(streams, owner_id)
 
-    def _friendship_visible(self, streams):
+    def _friendship_visible(self, streams, owner_id):
         if isinstance(streams, dict):
             data = streams.get("data")
-            return isinstance(data, list) and len(data) > 0
-        return bool(streams)
+            return isinstance(data, list) and any(
+                isinstance(friend, dict) and str(friend.get("id")) == owner_id
+                for friend in data
+            )
+        return False
 
-    def _go(self, streams):
-        if self.access != 1 and not self._friendship_visible(streams):
+    def _go(self, streams, owner_id):
+        if self.access != 1 and not self._friendship_visible(streams, owner_id):
             raise tornado.web.HTTPError(403)
+        self.render(
+            "event.html",
+            event=self.event,
+            suggestions=self.suggest,
+            votes=self.votes,
+            x=self.xsrf_form_html(),
+        )
 
-        try:
-            self.render('event.html', event=self.event, suggestions=self.
-                        suggest, votes=self.votes, x=self.xsrf_form_html())
-        except:
-            self.redirect('/problem')
-            pass
-
-class EventsHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
+class EventsHandler(base.BaseHandler):
     @tornado.web.authenticated
-    @tornado.web.asynchronous
     def get(self):
         x = self.xsrf_form_html()
         _id = self.get_current_user()['id']
@@ -59,7 +61,6 @@ class EventsHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
         self.render("events.html", x=x, events=events)
 
     @tornado.web.authenticated
-    @tornado.web.asynchronous
     def post(self):
         _id = self.get_current_user()['id']
         _place = self.get_argument('place')
@@ -71,7 +72,7 @@ class EventsHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
         self.redirect('/events')
 
 
-class TimeHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
+class TimeHandler(base.BaseHandler):
     @tornado.web.authenticated
     def post(self):
         _user_id = self.get_current_user()['id']
@@ -82,7 +83,7 @@ class TimeHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
             "DELETE FROM willbeout_availability WHERE event_id = %s and user_id = %s",
             _event_id, int(_user_id))
 
-        for i in urllib.unquote(_times).split(','):
+        for i in unquote(_times).split(','):
             self.db.execute(
                 """INSERT INTO willbeout_availability (user_id, user_name, time, event_id) VALUES (%s, %s, %s, %s)""",
                 int(_user_id), _user_name, int(i), _event_id)

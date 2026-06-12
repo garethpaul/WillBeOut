@@ -1,5 +1,31 @@
 # Changes
 
+## 2026-06-12
+
+- Migrated first-party modules from Python 2 syntax and removed Tornado APIs
+  deleted before Tornado 6.
+- Replaced the vulnerable legacy requirement set with exact Tornado 6.5.6,
+  PyMySQL 1.2.0, and cryptography 48.0.0 pins plus a five-package lock.
+- Replaced `tornado.database` with a parameterized PyMySQL adapter that rolls
+  back failed writes and closes every connection.
+- Replaced the removed Facebook mixin with an explicit Graph API v24.0 client,
+  configured HTTPS callback, OAuth state binding, bounded responses, and
+  redacted errors.
+- Encrypted Facebook access tokens before signed-cookie storage and enabled
+  template autoescaping with explicit raw XSRF form markup.
+- Added executable no-network runtime tests and a resolved dependency-audit
+  job while preserving the existing first-party security contracts.
+
+- Restricted authentication return paths to literal `/` and `/events`
+  destinations and removed the redundant high-cost mobile user-agent regex.
+- Added reviewed SRI and anonymous CORS attributes to fixed-version jQuery and
+  jQuery Mobile resources.
+- Added immutable-pinned CodeQL analysis for actions, Python, and first-party
+  JavaScript, with an exact checksum guard around the sole vendored Bootstrap
+  exclusion.
+- Removed the unused duplicate minified Bootstrap bundle and expanded
+  `make check` contracts for the security and analysis scope.
+
 ## 2026-06-10
 
 - Enabled Tornado XSRF enforcement, converted attendance, voting, message
@@ -7,7 +33,9 @@
   forms and all same-origin AJAX writes.
 - Added a pinned, read-only GitHub Actions workflow that runs `make check` on
   Python 3.10, 3.12, and 3.14 for the dependency-free Tornado handler contract
-  baseline.
+  baseline with credential-free checkout.
+- Added dependency-free workflow tests that reject contradictory credentials,
+  write permissions, unreviewed actions, and weakened CI commands.
 - Guarded the legacy Python 2 syntax step so hosted CI can run the baseline
   when Python 2 is unavailable.
 - Replaced active template-side jQuery, Facebook, Yelp, and share/profile HTTP
