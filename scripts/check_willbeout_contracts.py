@@ -609,8 +609,26 @@ def test_modern_runtime_dependency_and_api_contracts():
     assert_true(workflow.count("persist-credentials: false") == 2, "both workflow jobs must disable persisted credentials")
 
     plan = MODERN_RUNTIME_PLAN.read_text()
-    assert_true("status: planned" in plan or "status: completed" in plan, "modern runtime plan must record status")
-    for contract in ["Tornado 6.5.5", "Python 3.12", "tornado.database", "FacebookGraphMixin", "pip-audit"]:
+    assert_true(plan.count("status: completed") == 1, "modern runtime plan must record one completed status")
+    assert_true("## Work Completed" in plan, "modern runtime plan must record completed work")
+    assert_true("## Verification Completed" in plan, "modern runtime plan must record completed verification")
+    assert_true(
+        not re.search(r"(?i)\b(?:pending|todo|tbd|not run|remains required)\b", plan),
+        "modern runtime plan must not retain unfinished markers",
+    )
+    for contract in [
+        "Tornado 6.5.5",
+        "Python 3.12",
+        "tornado.database",
+        "FacebookGraphMixin",
+        "pip-audit",
+        "27432092033",
+        "27432092095",
+        "0c3ce2bda13684c1d6c4cdac69ca15223263766d",
+        "zero annotations",
+        "OPEN, CLEAN, and MERGEABLE",
+        "push` to\n  `master`",
+    ]:
         assert_true(contract in plan, "modern runtime plan must record {0}".format(contract))
 
 

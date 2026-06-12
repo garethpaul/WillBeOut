@@ -1,6 +1,6 @@
 # Modern Python Web Runtime
 
-status: planned
+status: completed
 
 ## Context
 
@@ -85,9 +85,11 @@ injected fakes, and preserves its existing authorization and XSRF contracts.
   redirects, unbounded HTTP, raw token errors, SQL interpolation, XSRF bypass,
   and weakened static evidence
 - `git diff --check`
-- successful exact-head push, pull-request, dependency-audit, and CodeQL runs
+- successful exact-head pull-request, dependency-audit, and CodeQL runs; branch
+  pushes intentionally do not trigger because the workflow limits `push` to
+  `master`
 
-## Implementation Progress
+## Work Completed
 
 - Replaced the six-package Python 2 manifest with exact Tornado 6.5.6,
   PyMySQL 1.2.0, and cryptography 48.0.0 direct pins plus a five-package
@@ -105,7 +107,7 @@ injected fakes, and preserves its existing authorization and XSRF contracts.
 - Added ten executable no-network runtime tests, expanded the static checker to
   20 contracts, and expanded workflow validation to 18 hostile mutations.
 
-## Local Verification
+## Verification Completed
 
 - All first-party modules compiled and imported under Python 3.12 without
   credentials or network access.
@@ -113,5 +115,13 @@ injected fakes, and preserves its existing authorization and XSRF contracts.
 - The exact lock passed `pip check` and `pip-audit -r requirements.lock`
   reported no known vulnerabilities.
 - `git diff --check` passed with no generated Python bytecode retained.
-- Hosted push, pull-request, dependency-audit, and CodeQL evidence remains
-  required before changing this plan from planned to completed.
+- Exact-head pull-request Check run `27432092033` passed Python 3.10, 3.12,
+  and 3.14 plus the dependency-audit job at
+  `0c3ce2bda13684c1d6c4cdac69ca15223263766d`.
+- Exact-head CodeQL run `27432092095` passed Actions, Python, and
+  JavaScript/TypeScript analysis at the same head.
+- All eight exact-head checks reported zero annotations. Branch and PR-ref code
+  scanning and repository secret scanning reported zero open alerts.
+- Pull request #7 was OPEN, CLEAN, and MERGEABLE at the exact head. The
+  fourteen default-branch Dependabot alerts remain visible until the open PR
+  is merged.
