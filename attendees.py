@@ -1,10 +1,9 @@
 import tornado.web
-import tornado.auth
 import base
 import json
 
 
-class Attend(base.BaseHandler, tornado.auth.FacebookGraphMixin):
+class Attend(base.BaseHandler):
     @tornado.web.authenticated
     def post(self):
         _event_id = self.get_int_argument('event_id')
@@ -14,7 +13,7 @@ class Attend(base.BaseHandler, tornado.auth.FacebookGraphMixin):
             _user_id, _event_id)
         self.redirect('/event?event_id=' + str(_event_id))
 
-class AttendNo(base.BaseHandler, tornado.auth.FacebookGraphMixin):
+class AttendNo(base.BaseHandler):
     @tornado.web.authenticated
     def post(self):
         _event_id = self.get_int_argument('event_id')
@@ -24,7 +23,7 @@ class AttendNo(base.BaseHandler, tornado.auth.FacebookGraphMixin):
             _event_id, _user_id,)
         self.redirect('/event?event_id=' + str(_event_id))
 
-class AttendData(base.BaseHandler, tornado.auth.FacebookGraphMixin):
+class AttendData(base.BaseHandler):
     @tornado.web.authenticated
     def get(self):
         _event_id = self.get_int_argument('event_id')

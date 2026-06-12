@@ -11,26 +11,30 @@
 - `docs` - plans, notes, and generated README assets
 - `templates` - server-rendered templates
 - `requirements.txt` - Python runtime dependencies
+- `requirements.lock` - exact resolved production dependency graph
+- `test_modern_runtime.py` - executable fake-client runtime tests
 
 ## Development commands
 
-- Install dependencies: `python3 -m pip install -r requirements.txt`
+- Install dependencies: `python3 -m pip install -r requirements.lock`
 - Full baseline: `make check`
 - Combined verification: `make verify`
 - Lint/static checks: `make lint`
 - Workflow contract mutations: `make contract-test`
 - Tests: `make test`
 - Build: `make build`
-- If a command above skips because a platform toolchain is missing, verify on a machine with that SDK before claiming platform behavior is tested.
+- Dependency audit: `pip-audit -r requirements.lock`
 
 ## Coding conventions
 
 - Language mix noted in the README: Python (24), JavaScript (12), shell (1).
-- Prefer dependency-free tests or stdlib checks when legacy packages are unavailable.
+- Keep runtime tests dependency-injected and no-network.
+- Keep Tornado 6.5.6, PyMySQL 1.2.0, cryptography 48.0.0, and the resolved lock exact.
 
 ## Testing guidance
 
-- No dedicated test files were detected; treat `make check` as the minimum baseline.
+- `test_modern_runtime.py` covers the executable modern boundary; treat
+  `make check` as the minimum baseline.
 - Start with the narrowest relevant test or Make target, then run `make check` before handing off if the change is not documentation-only.
 - Keep README verification notes in sync when commands, fixtures, or supported toolchains change.
 - Keep hosted verification read-only and credential-free with immutable action
@@ -46,7 +50,10 @@
 ## Safety and gotchas
 
 - `COOKIE_SECRET` configures Tornado secure-cookie signing and must not be committed.
-- Facebook and MySQL options are read from Tornado command-line/config options; keep credentials out of git.
+- `SESSION_ENCRYPTION_KEY` encrypts access tokens before signed-cookie storage.
+- `FACEBOOK_REDIRECT_URI` must be an exact registered HTTPS callback.
+- Keep Meta and MySQL configuration out of git and tests no-network.
+- Do not disable template autoescaping or render untrusted values with `raw`.
 - Do not commit generated Python bytecode, local virtual environments, or `.env` files.
 - Do not commit generated desktop metadata such as `.DS_Store`.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.

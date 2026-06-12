@@ -86,3 +86,32 @@ injected fakes, and preserves its existing authorization and XSRF contracts.
   and weakened static evidence
 - `git diff --check`
 - successful exact-head push, pull-request, dependency-audit, and CodeQL runs
+
+## Implementation Progress
+
+- Replaced the six-package Python 2 manifest with exact Tornado 6.5.6,
+  PyMySQL 1.2.0, and cryptography 48.0.0 direct pins plus a five-package
+  production lock.
+- Converted all first-party modules to Python 3 syntax and supported Tornado 6
+  request lifecycles.
+- Replaced `tornado.database` with a parameterized PyMySQL adapter that rolls
+  back failures and closes every connection.
+- Replaced the removed Facebook mixin with an explicit Graph API v24.0 client
+  using a configured HTTPS callback, OAuth state binding, bearer headers,
+  finite timeouts, disabled redirects, a 1 MiB response limit, and redacted
+  errors.
+- Added Fernet encryption for access tokens before signed-cookie storage,
+  bounded cookie lifetimes, exact friend-ID checks, and template autoescaping.
+- Added ten executable no-network runtime tests, expanded the static checker to
+  20 contracts, and expanded workflow validation to 18 hostile mutations.
+
+## Local Verification
+
+- All first-party modules compiled and imported under Python 3.12 without
+  credentials or network access.
+- `make lint`, `make test`, `make build`, and `make check` passed.
+- The exact lock passed `pip check` and `pip-audit -r requirements.lock`
+  reported no known vulnerabilities.
+- `git diff --check` passed with no generated Python bytecode retained.
+- Hosted push, pull-request, dependency-audit, and CodeQL evidence remains
+  required before changing this plan from planned to completed.

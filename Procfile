@@ -1,1 +1,1 @@
-web:	python facebook.py *:$PORT 
+web: python3 facebook.py --port=$PORT

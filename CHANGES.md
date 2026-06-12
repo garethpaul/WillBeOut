@@ -2,6 +2,20 @@
 
 ## 2026-06-12
 
+- Migrated first-party modules from Python 2 syntax and removed Tornado APIs
+  deleted before Tornado 6.
+- Replaced the vulnerable legacy requirement set with exact Tornado 6.5.6,
+  PyMySQL 1.2.0, and cryptography 48.0.0 pins plus a five-package lock.
+- Replaced `tornado.database` with a parameterized PyMySQL adapter that rolls
+  back failed writes and closes every connection.
+- Replaced the removed Facebook mixin with an explicit Graph API v24.0 client,
+  configured HTTPS callback, OAuth state binding, bounded responses, and
+  redacted errors.
+- Encrypted Facebook access tokens before signed-cookie storage and enabled
+  template autoescaping with explicit raw XSRF form markup.
+- Added executable no-network runtime tests and a resolved dependency-audit
+  job while preserving the existing first-party security contracts.
+
 - Restricted authentication return paths to literal `/` and `/events`
   destinations and removed the redundant high-cost mobile user-agent regex.
 - Added reviewed SRI and anonymous CORS attributes to fixed-version jQuery and

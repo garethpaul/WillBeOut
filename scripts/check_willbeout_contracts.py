@@ -16,6 +16,12 @@ VOTES = ROOT / "votes.py"
 ATTENDEES = ROOT / "attendees.py"
 MESSAGES = ROOT / "messages.py"
 FACEBOOK = ROOT / "facebook.py"
+DATABASE = ROOT / "database.py"
+FACEBOOK_CLIENT = ROOT / "facebook_client.py"
+SESSION = ROOT / "session.py"
+REQUIREMENTS = ROOT / "requirements.txt"
+REQUIREMENTS_LOCK = ROOT / "requirements.lock"
+MODERN_RUNTIME_PLAN = ROOT / "docs" / "plans" / "2026-06-12-modern-python-web-runtime.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -63,14 +69,16 @@ def test_cookie_secret_comes_from_configuration():
         "facebook.py must not hardcode the Tornado cookie secret",
     )
     assert_true(
-        "cookie_secret=options.cookie_secret" in source,
-        "Tornado settings must use the configured cookie_secret option",
+        "configured_cookie_secret = cookie_secret or options.cookie_secret" in source
+        and "cookie_secret=configured_cookie_secret" in source
+        and 'raise RuntimeError("COOKIE_SECRET is required")' in source,
+        "Tornado settings must require and use the configured cookie secret",
     )
 
 
 def test_session_cookie_is_http_only_and_secure():
     source = AUTH.read_text()
-    auth_callback = source.split("def _on_auth", 1)[1].split("class AuthLogoutHandler", 1)[0]
+    auth_callback = source.split("class AuthLoginHandler", 1)[1].split("class AuthLogoutHandler", 1)[0]
 
     assert_true(
         'self.set_secure_cookie(\n            "user"' in auth_callback,
@@ -78,12 +86,16 @@ def test_session_cookie_is_http_only_and_secure():
     )
     assert_true(
         "httponly=True" in auth_callback,
-        "signed user cookie must not be readable by browser JavaScript",
+        "encrypted user cookie must not be readable by browser JavaScript",
     )
     assert_true(
         "secure=True" in auth_callback,
-        "signed user cookie must only be sent over HTTPS",
+        "encrypted user cookie must only be sent over HTTPS",
     )
+    assert_true("samesite=\"Lax\"" in auth_callback, "user cookie must use SameSite=Lax")
+    assert_true("expires_days=1" in auth_callback, "encrypted user cookie must have a bounded lifetime")
+    assert_true(auth_callback.count("expires_days=10 / (24 * 60)") == 2, "OAuth state cookies must expire after ten minutes")
+    assert_true("session_cipher\"].encrypt_user(user)" in auth_callback, "access tokens must be encrypted before cookie storage")
 
 
 def test_state_changes_require_post_and_xsrf_tokens():
@@ -153,7 +165,7 @@ def test_state_changes_require_post_and_xsrf_tokens():
         "logout and mobile forms must render Tornado XSRF fields",
     )
     assert_true(
-        event_template.count("{{ x }}") >= 2,
+        event_template.count("{% raw x %}") >= 2,
         "desktop event forms must include the rendered Tornado XSRF field",
     )
     assert_true(
@@ -183,13 +195,14 @@ def test_auth_next_redirects_are_local_only():
         "auth callback must not redirect directly to a next argument",
     )
     assert_true(
-        'self.get_safe_next_url("/events")' in auth_source,
+        'self.get_safe_next_url_value(next_url, "/events")' in auth_source,
         "auth callback must redirect through the safe next-url helper",
     )
     assert_true(
-        "tornado.escape.url_escape(next_url)" in auth_source,
-        "auth login URL must carry the sanitized next path",
+        '"facebook_oauth_next"' in auth_source,
+        "auth login must bind the sanitized next path to a secure cookie",
     )
+    assert_true("hmac.compare_digest" in auth_source, "auth callback must validate OAuth state")
     assert_true("from ismobile import check" not in auth_source, "auth must not use the redundant mobile detector")
     assert_true("check(user_agent)" not in auth_source, "auth must not evaluate the legacy mobile regex")
     assert_true(not (ROOT / "ismobile.py").exists(), "the unused high-cost mobile detector must remain removed")
@@ -217,11 +230,11 @@ def test_event_rendering_requires_owner_or_friend_access():
         "EventHandler must reject missing events before querying related suggestions",
     )
     assert_true(
-        'self.facebook_request("/me/friends/" + str(self.event[\'userid\'])' in source,
+        '"/me/friends", self.current_user["access_token"], fields="id", limit=500' in source,
         "EventHandler must keep the Facebook friend visibility check",
     )
     assert_true(
-        "if self.access != 1 and not self._friendship_visible(streams):" in source,
+        "if self.access != 1 and not self._friendship_visible(streams, owner_id):" in source,
         "EventHandler must reject non-owner and non-friend event access",
     )
     assert_true(
@@ -229,7 +242,7 @@ def test_event_rendering_requires_owner_or_friend_access():
         "EventHandler must return 403 when event access is not allowed",
     )
     assert_true(
-        source.index("raise tornado.web.HTTPError(403)") < source.index("self.render('event.html'"),
+        source.index("raise tornado.web.HTTPError(403)") < source.index('self.render(\n            "event.html"'),
         "EventHandler must enforce access before rendering event.html",
     )
 
@@ -371,11 +384,11 @@ def test_mobile_event_rendering_requires_owner_or_friend_access():
     source = MOBILE.read_text()
     assert_true("def _friendship_visible" in source, "mobile EventHandler must interpret Facebook friend-check responses")
     assert_true(
-        'self.facebook_request("/me/friends/" + str(self.event[\'userid\'])' in source,
+        '"/me/friends", self.current_user["access_token"], fields="id", limit=500' in source,
         "mobile EventHandler must keep the Facebook friend visibility check",
     )
     assert_true(
-        "if self.access != 1 and not self._friendship_visible(streams):" in source,
+        "if self.access != 1 and not self._friendship_visible(streams, owner_id):" in source,
         "mobile EventHandler must reject non-owner and non-friend event access",
     )
     assert_true(
@@ -524,8 +537,81 @@ def test_ci_workflow_runs_make_check():
     readme = (ROOT / "README.md").read_text()
     assert_true("GitHub Actions" in readme, "README must document the GitHub Actions check")
     makefile = (ROOT / "Makefile").read_text()
-    assert_true("Skipping legacy Python 2 syntax checks" in makefile, "Makefile must guard missing Python 2")
+    assert_true("test_modern_runtime.py" in makefile, "Makefile must run executable modern runtime tests")
+    assert_true("PYTHON2" not in makefile, "Makefile must not retain the retired Python 2 path")
     assert_true("WORKFLOW_CONTRACT_SCRIPT" in makefile, "Makefile must run workflow mutations")
+
+
+def test_modern_runtime_dependency_and_api_contracts():
+    requirements = REQUIREMENTS.read_text()
+    assert_true(
+        requirements == "cryptography==48.0.0\nPyMySQL==1.2.0\ntornado==6.5.6\n",
+        "requirements.txt must keep the exact modern direct graph",
+    )
+    expected_lock = "cffi==2.0.0\ncryptography==48.0.0\npycparser==3.0\nPyMySQL==1.2.0\ntornado==6.5.6\n"
+    assert_true(REQUIREMENTS_LOCK.read_text() == expected_lock, "requirements.lock must keep the exact audited graph")
+    combined = "\n".join(path.read_text() for path in ROOT.glob("*.py"))
+    for retired in [
+        "tornado.database",
+        "FacebookGraphMixin",
+        "tornado.web.asynchronous",
+        "MySQLdb",
+        "urllib.unquote",
+        "urllib.quote",
+    ]:
+        assert_true(retired not in combined, "first-party sources must not restore retired API {0}".format(retired))
+
+    database_source = DATABASE.read_text()
+    for contract in [
+        "cursor.execute(statement, parameters)",
+        "connection.rollback()",
+        "connection.close()",
+        "pymysql.cursors.DictCursor",
+    ]:
+        assert_true(contract in database_source, "database adapter must keep {0}".format(contract))
+
+    graph_source = FACEBOOK_CLIENT.read_text()
+    for contract in [
+        '"https://www.facebook.com/{}/dialog/oauth?{}"',
+        '"https://graph.facebook.com/{}/oauth/access_token"',
+        'headers={"Authorization": "Bearer " + access_token}',
+        "request_timeout=self.timeout",
+        "connect_timeout=self.timeout",
+        "follow_redirects=False",
+        "self.http_client.fetch(request, max_body_size=1024 * 1024)",
+        'FacebookClientError("Facebook request failed")',
+    ]:
+        assert_true(contract in graph_source, "Facebook client must keep {0}".format(contract))
+    assert_true("response.body" not in graph_source.split("raise FacebookClientError", 1)[-1], "Facebook errors must not expose response bodies")
+
+    session_source = SESSION.read_text()
+    for contract in ["Fernet", "InvalidToken", "SESSION_ENCRYPTION_KEY is required", "return None"]:
+        assert_true(contract in session_source, "session encryption must keep {0}".format(contract))
+
+    application_source = FACEBOOK.read_text()
+    for contract in [
+        'raise RuntimeError("FACEBOOK_REDIRECT_URI must use HTTPS")',
+        'autoescape="xhtml_escape"',
+        "facebook_redirect_uri=configured_redirect_uri",
+    ]:
+        assert_true(contract in application_source, "application must keep {0}".format(contract))
+    for template in [EVENT_TEMPLATE, ROOT / "templates" / "events.html"]:
+        assert_true("{% raw x %}" in template.read_text(), "XSRF markup must remain explicitly raw under autoescaping")
+
+    workflow = CI_WORKFLOW.read_text()
+    for contract in [
+        "python -m pip install --disable-pip-version-check -r requirements.lock",
+        "dependency-audit:",
+        "pip-audit==2.10.0",
+        "pip-audit -r requirements.lock",
+    ]:
+        assert_true(contract in workflow, "CI workflow must keep {0}".format(contract))
+    assert_true(workflow.count("persist-credentials: false") == 2, "both workflow jobs must disable persisted credentials")
+
+    plan = MODERN_RUNTIME_PLAN.read_text()
+    assert_true("status: planned" in plan or "status: completed" in plan, "modern runtime plan must record status")
+    for contract in ["Tornado 6.5.5", "Python 3.12", "tornado.database", "FacebookGraphMixin", "pip-audit"]:
+        assert_true(contract in plan, "modern runtime plan must record {0}".format(contract))
 
 
 def test_makefile_is_root_independent():
@@ -594,6 +680,7 @@ def main():
         test_fixed_cdn_resources_use_reviewed_integrity,
         test_codeql_analyzes_first_party_sources_only,
         test_ci_workflow_runs_make_check,
+        test_modern_runtime_dependency_and_api_contracts,
         test_makefile_is_root_independent,
         test_plan_and_cleanup_contracts_exist,
     ]

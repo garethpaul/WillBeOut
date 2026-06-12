@@ -21,14 +21,15 @@ mutations={
 'missing push':mutate('missing push','  push:\n    branches:\n      - master\n',''),
 'missing pull request':mutate('missing pull request','  pull_request:\n',''),
 'missing manual dispatch':mutate('missing manual dispatch','  workflow_dispatch:\n',''),
-'duplicate runner':mutate('duplicate runner','    runs-on: ubuntu-24.04','    runs-on: ubuntu-24.04\n    runs-on: ubuntu-24.04'),
+'missing runner':mutate('missing runner','    runs-on: ubuntu-24.04\n',''),
 'unbounded job':mutate('unbounded job','    timeout-minutes: 5\n',''),
 'fail-fast matrix':mutate('fail-fast matrix','      fail-fast: false','      fail-fast: true'),
 'reduced matrix':mutate('reduced matrix','["3.10", "3.12", "3.14"]','["3.12"]'),
 'continued failure':mutate('continued failure','    strategy:','    continue-on-error: true\n    strategy:'),
 'wrong Python selector':mutate('wrong Python selector','python-version: ${{ matrix.python-version }}','python-version: "3.12"'),
-'dependency install':mutate('dependency install','run: make check','run: pip install tornado && make check'),
-'weakened gate':mutate('weakened gate','run: make check','run: make lint'),
+'floating dependency install':mutate('floating dependency install','python -m pip install --disable-pip-version-check -r requirements.lock','python -m pip install tornado'),
+'removed dependency audit':mutate('removed dependency audit','          pip-audit -r requirements.lock\n',''),
+'weakened gate':mutate('weakened gate','          make check','          make lint'),
 }
 for description,workflow in mutations.items(): reject(description,workflow)
 print(f'workflow contract tests passed ({len(mutations)} mutations rejected).')

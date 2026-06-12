@@ -231,7 +231,7 @@ $('.msglist').on('click', '.delete', function() {
 	</script>
 	
 	
-{{ x }}
+{% raw x %}
   </div>
   <div class="modal-footer">
     <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
@@ -258,7 +258,7 @@ $('#newtime').submit(function(){
 	  <textarea name='msg' rows="9"></textarea>
  	<input type='hidden' name='type' value='message' />
 	<input type='hidden' name='id' value='{{ event['id'] }}' />
-{{ x }}
+{% raw x %}
   </div>
   <div class="modal-footer">
     <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
