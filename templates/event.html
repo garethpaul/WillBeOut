@@ -25,8 +25,8 @@
 				<p class='city'>{{ i.city }}</p>
 				<p class='city'>Provider: {{ i.user_name }}</p>
 				<p class='votes'>{{ i.friends }} friends have voted for this location..</p>
-				<span data-id='{{ i.id }}' class='voted right hide'>You have voted for this place.<p><a href='/change/vote?id={{i.id}}&event_id={{event['id']}}' class='changevote'>Remove Your Vote</a></p></span>
-				<a data-id='{{ i.id }}' href='/vote?id={{ i.id }}&event_id={{ event['id'] }}' class='btn vote right hide'><span class='icon icon-plus'></span> me</a>
+				<span data-id='{{ i.id }}' class='voted right hide'>You have voted for this place.<button type='button' data-action='/change/vote' data-id='{{ i.id }}' data-event-id='{{ event['id'] }}' class='changevote vote-action btn btn-link'>Remove Your Vote</button></span>
+				<button type='button' data-action='/vote' data-id='{{ i.id }}' data-event-id='{{ event['id'] }}' class='btn vote vote-action right hide'><span class='icon icon-plus'></span> me</button>
 			</span>
 			<span class='right'><img src="https://graph.facebook.com/{{ i.user_id }}/picture?type=small"/></span>
 			</li>
@@ -80,6 +80,16 @@
 				$(this).find('.voted').hide();
 			});	
 
+		$('.vote-action').click(function() {
+			$.post($(this).attr('data-action'), {
+				'id': $(this).attr('data-id'),
+				'event_id': $(this).attr('data-event-id'),
+				'_xsrf': getCookie('_xsrf')
+			}, function() {
+				window.location.reload();
+			});
+		});
+
 		</script>
 		<div class='availability'>
 			<h3>Availability <a href="#newtime" role="button" class="btn padd" data-toggle="modal"><span class='icon icon-plus'></span>Time</a></h3>
@@ -116,16 +126,24 @@
 		  	$.each(data, function(key, val) {
 				if (val.user_id == {{ current_user['id'] }}) {
 					// vote out
-					_button = "<div><a href='/attend/no?event_id={{ event['id'] }}' class='btn btn-danger'>I'm Out</a></div>"
+					_button = "<div><button type='button' data-action='/attend/no' class='btn btn-danger attend-action'>I'm Out</button></div>"
 				} else {
-					_button = "<div><a href='/attend?event_id={{ event['id'] }}' class='btn btn-primary'>I'm In</a></div>"
+					_button = "<div><button type='button' data-action='/attend' class='btn btn-primary attend-action'>I'm In</button></div>"
 				}
 				items += ('<img src="https://graph.facebook.com/' + val.user_id + '/picture?type=small">');
 			});
 			if (data.length == 0){
-				_button = "<div><a href='/attend?event_id={{ event['id'] }}' class='btn btn-primary'>I'm In'</a></div>";
+				_button = "<div><button type='button' data-action='/attend' class='btn btn-primary attend-action'>I'm In</button></div>";
 			}
 			$('#attend').html(_button + items);
+			$('.attend-action').click(function() {
+				$.post($(this).attr('data-action'), {
+					'event_id': '{{ event['id'] }}',
+					'_xsrf': getCookie('_xsrf')
+				}, function() {
+					window.location.reload();
+				});
+			});
 		});
 		
 		</script>
@@ -162,9 +180,19 @@ $.getJSON('/messages?event_id={{ event['id'] }}', function(data) {
 	$('.admin').hover(function(){
 		var p = $(this).position();
 		var _id = $(this).attr('id')
-		$(this).find('.date').append('<a href="/delete/message?ide=' + _id + '&event_id={{ event['id'] }}" class="delete"><span class="icon-remove"></span></a>');
+		$(this).find('.date').append('<button type="button" data-message-id="' + _id + '" class="delete btn btn-link"><span class="icon-remove"></span></button>');
 	}, function(){
 		$(this).find('.delete').remove();
+	});
+});
+
+$('.msglist').on('click', '.delete', function() {
+	$.post('/delete/message', {
+		'ide': $(this).attr('data-message-id'),
+		'event_id': '{{ event['id'] }}',
+		'_xsrf': getCookie('_xsrf')
+	}, function() {
+		window.location.reload();
 	});
 });
 

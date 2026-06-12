@@ -2,12 +2,22 @@
 
 ## 2026-06-10
 
-- Added a lightweight GitHub Actions workflow that runs `make check` for the
-  dependency-free Tornado handler contract baseline.
+- Enabled Tornado XSRF enforcement, converted attendance, voting, message
+  deletion, and logout mutations from GET to POST, and added tokens to native
+  forms and all same-origin AJAX writes.
+- Added a pinned, read-only GitHub Actions workflow that runs `make check` on
+  Python 3.10, 3.12, and 3.14 for the dependency-free Tornado handler contract
+  baseline with credential-free checkout.
+- Added dependency-free workflow tests that reject contradictory credentials,
+  write permissions, unreviewed actions, and weakened CI commands.
 - Guarded the legacy Python 2 syntax step so hosted CI can run the baseline
   when Python 2 is unavailable.
 - Replaced active template-side jQuery, Facebook, Yelp, and share/profile HTTP
   integrations with HTTPS and added static coverage.
+- Marked the signed Facebook user cookie `HttpOnly` and `Secure` so the browser
+  does not expose it to JavaScript or send it over plain HTTP.
+- Pinned hosted verification to Ubuntu 24.04 with superseded-run cancellation
+  and made Make targets independent of the caller's working directory.
 
 ## 2026-06-09
 

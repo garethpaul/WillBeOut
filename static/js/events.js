@@ -311,7 +311,8 @@ $('.weekly tbody tr td').toggle(function() {
 			week: _week,
 			hour: _hour,
 			month: _month,
-			year: _year
+			year: _year,
+			_xsrf: getCookie("_xsrf")
 		});
 		d2 = $('[data-detail="true"]').parent().next().find('td').filter('[data-day="' + d + '"]')[0];
 		$(d2).css('border-top', 'red');

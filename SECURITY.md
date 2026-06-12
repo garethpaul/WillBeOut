@@ -35,12 +35,16 @@ Helpful reports include:
 - Dependency manifests detected: requirements.txt. Dependency updates should preserve lockfiles when present and avoid introducing packages without a clear maintenance reason.
 - Tornado secure-cookie signing should use `COOKIE_SECRET` from deployment
   configuration. Do not replace it with a checked-in literal secret.
+- The signed Facebook user cookie contains authentication data and must remain
+  `HttpOnly` and `Secure`, so production authentication requires HTTPS.
 - Request IDs for event, vote, attendee, availability, and message handlers
   should be validated before database access or redirects.
 - Active template-side external integrations should use HTTPS to avoid mixed
   content and request tampering.
-- GitHub Actions runs the dependency-free `make check` baseline; review
-  workflow, checker, and template integration changes as part of the
+- GitHub Actions runs the dependency-free `make check` baseline with immutable
+  actions, fixed Ubuntu runners, read-only permissions, credential-free
+  checkout, superseded-run cancellation, and structural policy mutations;
+  review workflow, checker, and template integration changes as part of the
   supply-chain surface.
 
 ## Service and API Notes

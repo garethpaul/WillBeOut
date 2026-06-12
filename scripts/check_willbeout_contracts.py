@@ -2,6 +2,8 @@
 """Static safety contracts for the legacy WillBeOut Tornado app."""
 from pathlib import Path
 
+from workflow_contract import validate as validate_workflow
+
 
 ROOT = Path(__file__).resolve().parents[1]
 AUTH = ROOT / "auth.py"
@@ -25,8 +27,16 @@ MESSAGE_ID_VALIDATION_PLAN = ROOT / "docs" / "plans" / "2026-06-09-message-id-va
 GENERATED_MACOS_METADATA_PLAN = ROOT / "docs" / "plans" / "2026-06-09-generated-macos-metadata.md"
 CI_PLAN = ROOT / "docs" / "plans" / "2026-06-10-ci-baseline.md"
 HTTPS_TEMPLATE_PLAN = ROOT / "docs" / "plans" / "2026-06-10-https-template-integrations.md"
+SESSION_COOKIE_PLAN = ROOT / "docs" / "plans" / "2026-06-10-session-cookie-hardening.md"
+XSRF_PLAN = ROOT / "docs" / "plans" / "2026-06-10-xsrf-write-protection.md"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "check.yml"
 GITIGNORE = ROOT / ".gitignore"
+MAKEFILE = ROOT / "Makefile"
+EVENT_TEMPLATE = ROOT / "templates" / "event.html"
+BASE_TEMPLATE = ROOT / "templates" / "base.html"
+STREAM_TEMPLATE = ROOT / "templates" / "stream.html"
+MOBILE_EVENT_TEMPLATE = ROOT / "templates" / "mobile_event.html"
+EVENTS_JAVASCRIPT = ROOT / "static" / "js" / "events.js"
 
 
 def assert_true(condition, label):
@@ -49,6 +59,108 @@ def test_cookie_secret_comes_from_configuration():
     assert_true(
         "cookie_secret=options.cookie_secret" in source,
         "Tornado settings must use the configured cookie_secret option",
+    )
+
+
+def test_session_cookie_is_http_only_and_secure():
+    source = AUTH.read_text()
+    auth_callback = source.split("def _on_auth", 1)[1].split("class AuthLogoutHandler", 1)[0]
+
+    assert_true(
+        'self.set_secure_cookie(\n            "user"' in auth_callback,
+        "auth callback must set the signed user cookie",
+    )
+    assert_true(
+        "httponly=True" in auth_callback,
+        "signed user cookie must not be readable by browser JavaScript",
+    )
+    assert_true(
+        "secure=True" in auth_callback,
+        "signed user cookie must only be sent over HTTPS",
+    )
+
+
+def test_state_changes_require_post_and_xsrf_tokens():
+    application_source = FACEBOOK.read_text()
+    assert_true(
+        "xsrf_cookies=True" in application_source,
+        "Tornado must enforce XSRF checks for unsafe HTTP methods",
+    )
+    assert_true(
+        "xsrf_cookies=False" not in application_source,
+        "Tornado XSRF protection must not be disabled",
+    )
+
+    mutating_handlers = (
+        (ATTENDEES, "Attend", "AttendNo"),
+        (ATTENDEES, "AttendNo", "AttendData"),
+        (VOTES, "VoteHandler", "ChangeVoteHandler"),
+        (VOTES, "ChangeVoteHandler", None),
+        (MESSAGES, "DMHandler", "MessageHandler"),
+        (AUTH, "AuthLogoutHandler", None),
+    )
+    for path, class_name, next_class in mutating_handlers:
+        source = path.read_text().split("class {0}".format(class_name), 1)[1]
+        if next_class:
+            source = source.split("class {0}".format(next_class), 1)[0]
+        assert_true(
+            "def post(self):" in source,
+            "{0} mutations must use POST".format(class_name),
+        )
+        assert_true(
+            "def get(self):" not in source,
+            "{0} must not mutate state through GET".format(class_name),
+        )
+
+    event_template = EVENT_TEMPLATE.read_text()
+    base_template = BASE_TEMPLATE.read_text()
+    stream_template = STREAM_TEMPLATE.read_text()
+    mobile_template = MOBILE_EVENT_TEMPLATE.read_text()
+    calendar_javascript = EVENTS_JAVASCRIPT.read_text()
+
+    for forbidden_href in (
+        "href='/vote",
+        "href='/change/vote",
+        "href='/attend",
+        'href="/delete/message',
+        "href='../auth/logout",
+        'href="/auth/logout',
+    ):
+        assert_true(
+            forbidden_href not in event_template + base_template + stream_template,
+            "state-changing links must not use GET: {0}".format(forbidden_href),
+        )
+
+    assert_true(
+        'action="/auth/logout" method="post"' in base_template + stream_template,
+        "logout form must use POST",
+    )
+    assert_true(
+        "data-action='/vote'" in event_template
+        and "data-action='/change/vote'" in event_template,
+        "vote controls must use explicit POST action buttons",
+    )
+    assert_true(
+        base_template.count("{% module xsrf_form_html() %}") >= 1
+        and stream_template.count("{% module xsrf_form_html() %}") >= 1
+        and mobile_template.count("{% module xsrf_form_html() %}") >= 1,
+        "logout and mobile forms must render Tornado XSRF fields",
+    )
+    assert_true(
+        event_template.count("{{ x }}") >= 2,
+        "desktop event forms must include the rendered Tornado XSRF field",
+    )
+    assert_true(
+        event_template.count("getCookie('_xsrf')") >= 3,
+        "desktop AJAX mutations must send the XSRF token",
+    )
+    assert_true(
+        mobile_template.count("'_xsrf': getCookie(") >= 2,
+        "mobile AJAX mutations must send the XSRF token",
+    )
+    assert_true(
+        '_xsrf: getCookie("_xsrf")' in calendar_javascript,
+        "calendar AJAX mutations must send the XSRF token",
     )
 
 
@@ -321,18 +433,31 @@ def test_active_template_integrations_use_https():
 def test_ci_workflow_runs_make_check():
     assert_true(CI_WORKFLOW.is_file(), "GitHub Actions check workflow must exist")
     workflow = CI_WORKFLOW.read_text()
-    for fragment in (
-        "actions/checkout@v4",
-        "actions/setup-python@v5",
-        'python-version: "3.12"',
-        "make check",
-    ):
-        assert_true(fragment in workflow, "CI workflow must include {0}".format(fragment))
+    errors = validate_workflow(workflow)
+    assert_true(not errors, "CI workflow must {0}".format(errors[0]) if errors else "")
 
     readme = (ROOT / "README.md").read_text()
     assert_true("GitHub Actions" in readme, "README must document the GitHub Actions check")
     makefile = (ROOT / "Makefile").read_text()
     assert_true("Skipping legacy Python 2 syntax checks" in makefile, "Makefile must guard missing Python 2")
+    assert_true("WORKFLOW_CONTRACT_SCRIPT" in makefile, "Makefile must run workflow mutations")
+
+
+def test_makefile_is_root_independent():
+    makefile = MAKEFILE.read_text()
+
+    assert_true(
+        "ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))" in makefile,
+        "Makefile must resolve the repository root",
+    )
+    assert_true(
+        "CHECK_SCRIPT := $(ROOT)/scripts/check_willbeout_contracts.py" in makefile,
+        "Makefile must use the rooted checker path",
+    )
+    assert_true(
+        '$(MAKE) -f "$(ROOT)/Makefile" clean' in makefile,
+        "recursive cleanup must use the rooted Makefile",
+    )
 
 
 def assert_completed_plan(path, label):
@@ -356,6 +481,8 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(GENERATED_MACOS_METADATA_PLAN, "generated macOS metadata")
     assert_completed_plan(CI_PLAN, "CI baseline")
     assert_completed_plan(HTTPS_TEMPLATE_PLAN, "HTTPS template integrations")
+    assert_completed_plan(SESSION_COOKIE_PLAN, "session cookie hardening")
+    assert_completed_plan(XSRF_PLAN, "XSRF write protection")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -366,6 +493,8 @@ def main():
     tests = [
         test_auth_handler_has_no_stray_non_code_suffix,
         test_cookie_secret_comes_from_configuration,
+        test_session_cookie_is_http_only_and_secure,
+        test_state_changes_require_post_and_xsrf_tokens,
         test_auth_next_redirects_are_local_only,
         test_event_rendering_requires_owner_or_friend_access,
         test_event_ids_are_validated_before_database_queries,
@@ -377,6 +506,7 @@ def main():
         test_generated_macos_metadata_is_not_committed,
         test_active_template_integrations_use_https,
         test_ci_workflow_runs_make_check,
+        test_makefile_is_root_independent,
         test_plan_and_cleanup_contracts_exist,
     ]
     for test in tests:

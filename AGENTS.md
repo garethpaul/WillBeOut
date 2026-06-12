@@ -18,6 +18,7 @@
 - Full baseline: `make check`
 - Combined verification: `make verify`
 - Lint/static checks: `make lint`
+- Workflow contract mutations: `make contract-test`
 - Tests: `make test`
 - Build: `make build`
 - If a command above skips because a platform toolchain is missing, verify on a machine with that SDK before claiming platform behavior is tested.
@@ -32,6 +33,8 @@
 - No dedicated test files were detected; treat `make check` as the minimum baseline.
 - Start with the narrowest relevant test or Make target, then run `make check` before handing off if the change is not documentation-only.
 - Keep README verification notes in sync when commands, fixtures, or supported toolchains change.
+- Keep hosted verification read-only and credential-free with immutable action
+  pins; update structural workflow mutations with intentional policy changes.
 
 ## PR / change guidance
 

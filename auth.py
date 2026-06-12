@@ -25,7 +25,8 @@ class AuthLoginHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
     def _on_auth(self, user):
         if not user:
             raise tornado.web.HTTPError(500, "Facebook auth failed")
-        self.set_secure_cookie("user", tornado.escape.json_encode(user))
+        self.set_secure_cookie(
+            "user", tornado.escape.json_encode(user), httponly=True, secure=True)
         #magic redirect to mobile if mobile or desktop if desktop
         user_agent = self.request.headers.get("User-Agent")
         if check(user_agent) == 1:
@@ -34,6 +35,6 @@ class AuthLoginHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
             self.redirect(self.get_safe_next_url("/events"))
 
 class AuthLogoutHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
-    def get(self):
+    def post(self):
         self.clear_cookie("user")
         self.redirect('https://www.facebook.com/logout.php')
