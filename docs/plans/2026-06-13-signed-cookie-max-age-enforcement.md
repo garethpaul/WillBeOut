@@ -1,6 +1,6 @@
 # Signed Cookie Max-Age Enforcement
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -34,3 +34,16 @@ can therefore remain server-valid after its intended browser expiry.
 - Do not change cookie payloads, rotate deployment secrets, add refresh tokens,
   alter provider scopes, or broaden redirect destinations.
 - Do not merge or close any pull request without explicit owner authorization.
+
+## Verification Results
+
+- The fresh OAuth round trip passed, while an eleven-minute OAuth state cookie
+  and a two-day user cookie were rejected; the expired callback made no token
+  exchange.
+- Before this status update, the dependency-free checker reached only the
+  required plan-completion assertion after all implementation contracts passed.
+- Six isolated mutations were rejected for expanded user or OAuth ages, missing
+  user/state/next read limits, and stale plan status.
+- Local and external-working-directory `timeout 300s make check` passed 22
+  static contracts, 21 no-network runtime tests, and 18 workflow mutations
+  under the exact pinned environment.

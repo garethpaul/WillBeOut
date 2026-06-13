@@ -27,7 +27,7 @@ class AuthLoginHandler(base.BaseHandler):
                 httponly=True,
                 secure=True,
                 samesite="Lax",
-                expires_days=10 / (24 * 60),
+                expires_days=self.OAUTH_COOKIE_MAX_AGE_DAYS,
             )
             self.set_secure_cookie(
                 "facebook_oauth_next",
@@ -35,13 +35,15 @@ class AuthLoginHandler(base.BaseHandler):
                 httponly=True,
                 secure=True,
                 samesite="Lax",
-                expires_days=10 / (24 * 60),
+                expires_days=self.OAUTH_COOKIE_MAX_AGE_DAYS,
             )
             self.redirect(self.facebook_client.authorization_url(self._redirect_uri(), state))
             return
 
         code = self.get_argument("code", "")
-        expected_state = self.get_secure_cookie("facebook_oauth_state")
+        expected_state = self.get_secure_cookie(
+            "facebook_oauth_state", max_age_days=self.OAUTH_COOKIE_MAX_AGE_DAYS
+        )
         supplied_state = self.get_argument("state", "")
         try:
             valid_state = expected_state and hmac.compare_digest(
@@ -53,7 +55,9 @@ class AuthLoginHandler(base.BaseHandler):
             self._finish_oauth_error(400, "Invalid OAuth state")
             return
 
-        next_cookie = self.get_secure_cookie("facebook_oauth_next")
+        next_cookie = self.get_secure_cookie(
+            "facebook_oauth_next", max_age_days=self.OAUTH_COOKIE_MAX_AGE_DAYS
+        )
         next_url = next_cookie.decode("utf-8") if next_cookie else "/events"
         self.clear_cookie("facebook_oauth_state")
         self.clear_cookie("facebook_oauth_next")
@@ -82,7 +86,7 @@ class AuthLoginHandler(base.BaseHandler):
             httponly=True,
             secure=True,
             samesite="Lax",
-            expires_days=1,
+            expires_days=self.USER_COOKIE_MAX_AGE_DAYS,
         )
         self.redirect(self.get_safe_next_url_value(next_url, "/events"))
 

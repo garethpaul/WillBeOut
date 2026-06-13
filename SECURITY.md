@@ -37,7 +37,9 @@ Helpful reports include:
   configuration. Do not replace it with a checked-in literal secret.
 - The signed Facebook user cookie contains Fernet-encrypted authentication data
   and must remain `HttpOnly`, `Secure`, and `SameSite=Lax`. Signing alone is not
-  confidentiality; `SESSION_ENCRYPTION_KEY` must remain separate from
+  confidentiality. Server-side verification must enforce the same one-day user
+  and ten-minute OAuth lifetimes used for browser expiry;
+  `SESSION_ENCRYPTION_KEY` must remain separate from
   `COOKIE_SECRET` and out of source control.
 - OAuth callbacks must use the configured HTTPS `FACEBOOK_REDIRECT_URI`, bind a
   high-entropy state value to a secure cookie, and retain the local-only next

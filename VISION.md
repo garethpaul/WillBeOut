@@ -18,6 +18,7 @@ Priority:
 - Keep Facebook and MySQL credentials in deployment configuration
 - Keep Tornado cookie signing secrets in deployment configuration
 - Keep Facebook access tokens encrypted before secure signed-cookie storage
+- Enforce signed-cookie age limits during browser and server verification
 - Require POST and Tornado XSRF validation for every authenticated state change
 - Keep the Python 3.10+ runtime and exact resolved dependency audit explicit
 - Keep OAuth state bound to secure cookies and callback URLs configured as HTTPS

@@ -58,6 +58,8 @@ Required production values:
 - `SESSION_ENCRYPTION_KEY` encrypts Meta access tokens before signed-cookie
   storage. Generate it with
   `python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'`.
+- Signed user cookies are accepted server-side for at most one day; transient
+  OAuth state and next cookies are accepted for at most ten minutes.
 - `FACEBOOK_API_KEY` and `FACEBOOK_SECRET` identify the Meta application.
 - `FACEBOOK_REDIRECT_URI` is the exact registered HTTPS callback ending in
   `/auth/login`; request Host headers are not used to construct it.

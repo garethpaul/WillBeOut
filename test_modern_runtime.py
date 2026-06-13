@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 import unittest
 from http.cookies import SimpleCookie
 from types import SimpleNamespace
@@ -387,6 +388,48 @@ class AuthHandlerTest(AsyncHTTPTestCase):
 
         self.assertEqual(400, response.code)
         self.assertEqual([], self.graph.auth_calls)
+
+    def test_oauth_callback_rejects_expired_state_before_exchange(self):
+        expired_clock = lambda: time.time() - (11 * 60)
+        state_cookie = create_signed_value(
+            "test-cookie-secret", "facebook_oauth_state", "expired-state", clock=expired_clock
+        ).decode("ascii")
+        next_cookie = create_signed_value(
+            "test-cookie-secret", "facebook_oauth_next", "/events", clock=expired_clock
+        ).decode("ascii")
+
+        response = self.fetch(
+            "/auth/login?code=code&state=expired-state",
+            headers={
+                "Cookie": "facebook_oauth_state={}; facebook_oauth_next={}".format(
+                    state_cookie, next_cookie
+                )
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(400, response.code)
+        self.assertEqual([], self.graph.auth_calls)
+
+    def test_expired_user_cookie_does_not_authenticate(self):
+        encrypted_user = self.cipher.encrypt_user(
+            {"id": "42", "name": "Ada", "access_token": "secret-token"}
+        )
+        expired_cookie = create_signed_value(
+            "test-cookie-secret",
+            "user",
+            encrypted_user,
+            clock=lambda: time.time() - (2 * 24 * 60 * 60),
+        ).decode("ascii")
+
+        response = self.fetch(
+            "/events",
+            headers={"Cookie": "user=" + expired_cookie},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(302, response.code)
+        self.assertTrue(response.headers["Location"].startswith("/auth/login?"))
 
     def test_oauth_error_rejects_invalid_state_before_handling(self):
         response = self.fetch(
