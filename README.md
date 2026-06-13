@@ -105,6 +105,8 @@ isolated credentialed smoke test.
   1 MiB response limit, and generic errors that exclude tokens and response
   bodies.
 - Owner/friend checks require an exact matching friend ID.
+- Event-scoped attendee, message, vote, suggestion, and availability endpoints
+  enforce the same owner-or-friend decision before protected reads or writes.
 - PyMySQL operations keep SQL and parameters separate, roll back failed writes,
   and close every connection.
 - Tornado XSRF checks protect writes, and state changes remain POST-only.
@@ -122,6 +124,8 @@ isolated credentialed smoke test.
   for the first-party CodeQL alert remediation.
 - See `docs/plans/2026-06-13-oauth-error-callbacks.md` for state-bound OAuth
   denial and provider-error handling with query-redacted request logs.
+- See `docs/plans/2026-06-13-event-scoped-endpoint-authorization.md` for shared
+  authorization across event pages and supporting data endpoints.
 - Earlier plans under `docs/plans/` preserve the event access, integer ID,
   XSRF, secure-cookie, HTTPS integration, and CI decisions enforced by
   `make check`.

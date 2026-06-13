@@ -140,14 +140,15 @@ class Privacy(tornado.web.RequestHandler):
 
 class SuggestHandler(BaseHandler):
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _user_id = self.get_current_user()['id']
         _user_name = self.get_current_user()['name']
         _name = escape(self.get_argument('name'))
         _url = escape(self.get_argument('url'))
         _address = escape(self.get_argument('address'))
         _city = escape(self.get_argument('city'))
-        _event_id = escape(self.get_argument('event_id'))
+        _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         self.db.execute("""INSERT INTO willbeout_suggest (user_id,
                                                     user_name,
                                                     event_id,
@@ -156,8 +157,7 @@ class SuggestHandler(BaseHandler):
                                                     address,
                                                     url) VALUES (
                                                         %s, %s, %s, %s, %s, %s, %s)""",
-                        int(_user_id), _user_name, int(
-                            _event_id), _name, _city, _address,
+                        int(_user_id), _user_name, _event_id, _name, _city, _address,
                         _url)
 
         self.write('OK')

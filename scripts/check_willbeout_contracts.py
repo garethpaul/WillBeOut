@@ -23,6 +23,7 @@ REQUIREMENTS = ROOT / "requirements.txt"
 REQUIREMENTS_LOCK = ROOT / "requirements.lock"
 MODERN_RUNTIME_PLAN = ROOT / "docs" / "plans" / "2026-06-12-modern-python-web-runtime.md"
 OAUTH_ERROR_PLAN = ROOT / "docs" / "plans" / "2026-06-13-oauth-error-callbacks.md"
+EVENT_ENDPOINT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-13-event-scoped-endpoint-authorization.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -266,35 +267,59 @@ def test_auth_next_redirects_are_local_only():
 
 def test_event_rendering_requires_owner_or_friend_access():
     source = EVENTS.read_text()
-    assert_true("def _friendship_visible" in source, "EventHandler must interpret Facebook friend-check responses")
     assert_true(
-        "if not self.event:" in source,
-        "EventHandler must check for missing events",
+        "self.event = await self.require_event_access(_eventid)" in source,
+        "desktop EventHandler must use the shared event access guard",
     )
     assert_true(
-        "raise tornado.web.HTTPError(404)" in source,
-        "EventHandler must return 404 for missing events",
-    )
-    assert_true(
-        source.index("raise tornado.web.HTTPError(404)") < source.index("self.suggest = self.db.query"),
-        "EventHandler must reject missing events before querying related suggestions",
-    )
-    assert_true(
-        '"/me/friends", self.current_user["access_token"], fields="id", limit=500' in source,
-        "EventHandler must keep the Facebook friend visibility check",
-    )
-    assert_true(
-        "if self.access != 1 and not self._friendship_visible(streams, owner_id):" in source,
-        "EventHandler must reject non-owner and non-friend event access",
-    )
-    assert_true(
-        "raise tornado.web.HTTPError(403)" in source,
-        "EventHandler must return 403 when event access is not allowed",
-    )
-    assert_true(
-        source.index("raise tornado.web.HTTPError(403)") < source.index('self.render(\n            "event.html"'),
+        source.index("await self.require_event_access(_eventid)") < source.index("self.suggest = self.db.query"),
         "EventHandler must enforce access before rendering event.html",
     )
+
+
+def test_all_event_scoped_endpoints_require_shared_access():
+    base_source = BASE.read_text()
+    assert_true("async def require_event_access(self, event_id):" in base_source, "BaseHandler must centralize event access")
+    assert_true("def friendship_visible(streams, owner_id):" in base_source, "BaseHandler must centralize exact friend matching")
+    assert_true('"SELECT * FROM willbeout_events WHERE id = %s", event_id' in base_source, "shared access must load the requested event")
+    assert_true("raise tornado.web.HTTPError(404)" in base_source, "shared access must return 404 for missing events")
+    assert_true('"/me/friends", current_user["access_token"], fields="id", limit=500' in base_source, "shared access must use the authenticated Facebook token")
+    assert_true("raise tornado.web.HTTPError(403)" in base_source, "shared access must reject non-owner non-friends")
+
+    required_counts = {
+        EVENTS: 3,
+        MOBILE: 1,
+        ATTENDEES: 3,
+        MESSAGES: 3,
+        VOTES: 2,
+        FACEBOOK: 1,
+    }
+    for path, expected_count in required_counts.items():
+        actual_count = path.read_text().count("await self.require_event_access(")
+        assert_true(
+            actual_count == expected_count,
+            "{0} must guard all event-scoped methods ({1} expected, {2} found)".format(
+                path.name, expected_count, actual_count
+            ),
+        )
+
+    message_source = MESSAGES.read_text()
+    assert_true(
+        "DELETE FROM willbeout_messages WHERE id = %s AND user_id = %s AND event_id = %s" in message_source,
+        "message deletion must bind the mutated row to the authorized event",
+    )
+
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+    for contract in [
+        "test_unauthorized_event_reads_stop_after_access_lookup",
+        "test_unauthorized_event_writes_stop_before_mutation",
+        "test_owner_access_skips_facebook_and_reaches_event_data",
+        "test_friend_access_reaches_authorized_mutation",
+        "test_missing_event_is_not_disclosed_as_forbidden",
+        "self.assertEqual([], self.database.execute_calls, path)",
+        "self.assertEqual([], self.database.query_calls, path)",
+    ]:
+        assert_true(contract in runtime_tests, "runtime tests must preserve event access contract: " + contract)
 
 
 def test_event_ids_are_validated_before_database_queries():
@@ -432,25 +457,9 @@ def test_message_ids_are_validated_before_database_access():
 
 def test_mobile_event_rendering_requires_owner_or_friend_access():
     source = MOBILE.read_text()
-    assert_true("def _friendship_visible" in source, "mobile EventHandler must interpret Facebook friend-check responses")
     assert_true(
-        '"/me/friends", self.current_user["access_token"], fields="id", limit=500' in source,
-        "mobile EventHandler must keep the Facebook friend visibility check",
-    )
-    assert_true(
-        "if self.access != 1 and not self._friendship_visible(streams, owner_id):" in source,
-        "mobile EventHandler must reject non-owner and non-friend event access",
-    )
-    assert_true(
-        "raise tornado.web.HTTPError(403)" in source,
-        "mobile EventHandler must return 403 when event access is not allowed",
-    )
-    assert_true(
-        "raise tornado.web.HTTPError(404)" in source,
-        "mobile EventHandler must return 404 for missing events",
-    )
-    assert_true(
-        source.index("raise tornado.web.HTTPError(403)") < source.index("self.render('mobile_event.html'"),
+        "self.event = await self.require_event_access(_eventid)" in source
+        and source.index("await self.require_event_access(_eventid)") < source.index("self.places = self.db.query"),
         "mobile EventHandler must enforce access before rendering mobile_event.html",
     )
 
@@ -729,6 +738,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(XSRF_PLAN, "XSRF write protection")
     assert_completed_plan(CODEQL_PLAN, "first-party CodeQL remediation")
     assert_completed_plan(OAUTH_ERROR_PLAN, "OAuth error callbacks")
+    assert_completed_plan(EVENT_ENDPOINT_ACCESS_PLAN, "event-scoped endpoint authorization")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -744,6 +754,7 @@ def main():
         test_state_changes_require_post_and_xsrf_tokens,
         test_auth_next_redirects_are_local_only,
         test_event_rendering_requires_owner_or_friend_access,
+        test_all_event_scoped_endpoints_require_shared_access,
         test_event_ids_are_validated_before_database_queries,
         test_vote_ids_are_validated_before_database_writes,
         test_attendee_event_ids_are_validated_before_database_access,
