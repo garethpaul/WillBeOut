@@ -2,6 +2,8 @@
 
 ## 2026-06-13
 
+- Enforced the documented one-day user session and ten-minute OAuth cookie
+  lifetimes during server-side signed-cookie verification.
 - Centralized owner-or-Facebook-friend authorization and applied it before all
   event-scoped attendee, message, vote, suggestion, and availability access.
 

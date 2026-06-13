@@ -24,6 +24,7 @@ REQUIREMENTS_LOCK = ROOT / "requirements.lock"
 MODERN_RUNTIME_PLAN = ROOT / "docs" / "plans" / "2026-06-12-modern-python-web-runtime.md"
 OAUTH_ERROR_PLAN = ROOT / "docs" / "plans" / "2026-06-13-oauth-error-callbacks.md"
 EVENT_ENDPOINT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-13-event-scoped-endpoint-authorization.md"
+COOKIE_MAX_AGE_PLAN = ROOT / "docs" / "plans" / "2026-06-13-signed-cookie-max-age-enforcement.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -80,6 +81,7 @@ def test_cookie_secret_comes_from_configuration():
 
 def test_session_cookie_is_http_only_and_secure():
     source = AUTH.read_text()
+    base_source = BASE.read_text()
     auth_callback = source.split("class AuthLoginHandler", 1)[1].split("class AuthLogoutHandler", 1)[0]
 
     assert_true(
@@ -95,8 +97,18 @@ def test_session_cookie_is_http_only_and_secure():
         "encrypted user cookie must only be sent over HTTPS",
     )
     assert_true("samesite=\"Lax\"" in auth_callback, "user cookie must use SameSite=Lax")
-    assert_true("expires_days=1" in auth_callback, "encrypted user cookie must have a bounded lifetime")
-    assert_true(auth_callback.count("expires_days=10 / (24 * 60)") == 2, "OAuth state cookies must expire after ten minutes")
+    assert_true(
+        "USER_COOKIE_MAX_AGE_DAYS = 1" in base_source
+        and "expires_days=self.USER_COOKIE_MAX_AGE_DAYS" in auth_callback
+        and '"user", max_age_days=self.USER_COOKIE_MAX_AGE_DAYS' in base_source,
+        "user cookie set and verification paths must share the one-day lifetime",
+    )
+    assert_true(
+        "OAUTH_COOKIE_MAX_AGE_DAYS = 10 / (24 * 60)" in base_source
+        and auth_callback.count("expires_days=self.OAUTH_COOKIE_MAX_AGE_DAYS") == 2
+        and auth_callback.count("max_age_days=self.OAUTH_COOKIE_MAX_AGE_DAYS") == 2,
+        "OAuth cookie set and verification paths must share the ten-minute lifetime",
+    )
     assert_true("session_cipher\"].encrypt_user(user)" in auth_callback, "access tokens must be encrypted before cookie storage")
 
 
@@ -739,6 +751,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(CODEQL_PLAN, "first-party CodeQL remediation")
     assert_completed_plan(OAUTH_ERROR_PLAN, "OAuth error callbacks")
     assert_completed_plan(EVENT_ENDPOINT_ACCESS_PLAN, "event-scoped endpoint authorization")
+    assert_completed_plan(COOKIE_MAX_AGE_PLAN, "signed cookie max-age enforcement")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:

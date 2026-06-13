@@ -3,8 +3,13 @@ import tornado.escape
 
 
 class BaseHandler(tornado.web.RequestHandler):
+    USER_COOKIE_MAX_AGE_DAYS = 1
+    OAUTH_COOKIE_MAX_AGE_DAYS = 10 / (24 * 60)
+
     def get_current_user(self):
-        encrypted_user = self.get_secure_cookie("user")
+        encrypted_user = self.get_secure_cookie(
+            "user", max_age_days=self.USER_COOKIE_MAX_AGE_DAYS
+        )
         if not encrypted_user:
             return None
         try:
