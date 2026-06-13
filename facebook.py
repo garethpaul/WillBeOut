@@ -6,6 +6,7 @@ import tornado.options
 import tornado.web
 from base import BaseHandler
 from html import escape
+from tornado.log import access_log
 from tornado.options import define, options
 from database import Database
 from facebook_client import FacebookClient
@@ -36,6 +37,24 @@ define("mysql_host", default=os.environ.get("MYSQL_HOST", ""))
 define("mysql_database", default=os.environ.get("MYSQL_DATABASE", ""))
 define("mysql_user", default=os.environ.get("MYSQL_USER", ""))
 define("mysql_password", default=os.environ.get("MYSQL_PASSWORD", ""))
+
+
+def log_request_without_query(handler):
+    status = handler.get_status()
+    if status < 400:
+        log_method = access_log.info
+    elif status < 500:
+        log_method = access_log.warning
+    else:
+        log_method = access_log.error
+    log_method(
+        "%d %s %s (%s) %.2fms",
+        status,
+        handler.request.method,
+        handler.request.path,
+        handler.request.remote_ip,
+        1000.0 * handler.request.request_time(),
+    )
 
 
 class Application(tornado.web.Application):
@@ -101,6 +120,7 @@ class Application(tornado.web.Application):
             ),
             session_cipher=session_cipher or SessionCipher(options.session_encryption_key),
             facebook_redirect_uri=configured_redirect_uri,
+            log_function=log_request_without_query,
         )
         tornado.web.Application.__init__(self, handlers, **settings)
 

@@ -22,6 +22,7 @@ SESSION = ROOT / "session.py"
 REQUIREMENTS = ROOT / "requirements.txt"
 REQUIREMENTS_LOCK = ROOT / "requirements.lock"
 MODERN_RUNTIME_PLAN = ROOT / "docs" / "plans" / "2026-06-12-modern-python-web-runtime.md"
+OAUTH_ERROR_PLAN = ROOT / "docs" / "plans" / "2026-06-13-oauth-error-callbacks.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -96,6 +97,55 @@ def test_session_cookie_is_http_only_and_secure():
     assert_true("expires_days=1" in auth_callback, "encrypted user cookie must have a bounded lifetime")
     assert_true(auth_callback.count("expires_days=10 / (24 * 60)") == 2, "OAuth state cookies must expire after ten minutes")
     assert_true("session_cipher\"].encrypt_user(user)" in auth_callback, "access tokens must be encrypted before cookie storage")
+
+
+def test_oauth_error_callbacks_are_state_bound_and_redacted():
+    auth_source = AUTH.read_text()
+    callback = auth_source.split("class AuthLoginHandler", 1)[1].split(
+        "class AuthLogoutHandler", 1
+    )[0]
+    for contract in [
+        'has_code = "code" in self.request.arguments',
+        'has_error = "error" in self.request.arguments',
+        'self._finish_oauth_error(400, "Invalid OAuth state")',
+        "if has_code and has_error:",
+        'self._finish_oauth_error(403, "Facebook authorization denied")',
+        'self._finish_oauth_error(502, "Facebook authorization failed")',
+        'self.clear_cookie("facebook_oauth_state")',
+        'self.clear_cookie("facebook_oauth_next")',
+    ]:
+        assert_true(contract in callback, "OAuth callback must keep {0}".format(contract))
+    assert_true(
+        callback.index("if not valid_state:")
+        < callback.index('self.clear_cookie("facebook_oauth_state")')
+        < callback.index("if has_error:"),
+        "OAuth callbacks must validate state and clear transient cookies before provider errors",
+    )
+    assert_true(
+        "error_description" not in auth_source,
+        "OAuth callback responses must not read or reflect provider descriptions",
+    )
+
+    application_source = FACEBOOK.read_text()
+    for contract in [
+        "def log_request_without_query(handler):",
+        "handler.request.path",
+        "log_function=log_request_without_query",
+    ]:
+        assert_true(contract in application_source, "OAuth logging must keep {0}".format(contract))
+    assert_true(
+        "handler.request.uri" not in application_source,
+        "application access logs must not include callback query strings",
+    )
+
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+    for test_name in [
+        "test_oauth_error_rejects_invalid_state_before_handling",
+        "test_oauth_access_denied_clears_state_without_restarting",
+        "test_oauth_provider_error_is_stable_and_not_exchanged",
+        "test_oauth_callback_rejects_code_and_error_together",
+    ]:
+        assert_true(test_name in runtime_tests, "runtime coverage must keep {0}".format(test_name))
 
 
 def test_state_changes_require_post_and_xsrf_tokens():
@@ -647,6 +697,11 @@ def test_makefile_is_root_independent():
         '$(MAKE) -f "$(ROOT)/Makefile" clean' in makefile,
         "recursive cleanup must use the rooted Makefile",
     )
+    assert_true(
+        'cd "$(ROOT)" && PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest -v test_modern_runtime.py'
+        in makefile,
+        "runtime tests must execute from the repository root",
+    )
 
 
 def assert_completed_plan(path, label):
@@ -673,6 +728,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(SESSION_COOKIE_PLAN, "session cookie hardening")
     assert_completed_plan(XSRF_PLAN, "XSRF write protection")
     assert_completed_plan(CODEQL_PLAN, "first-party CodeQL remediation")
+    assert_completed_plan(OAUTH_ERROR_PLAN, "OAuth error callbacks")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -684,6 +740,7 @@ def main():
         test_auth_handler_has_no_stray_non_code_suffix,
         test_cookie_secret_comes_from_configuration,
         test_session_cookie_is_http_only_and_secure,
+        test_oauth_error_callbacks_are_state_bound_and_redacted,
         test_state_changes_require_post_and_xsrf_tokens,
         test_auth_next_redirects_are_local_only,
         test_event_rendering_requires_owner_or_friend_access,

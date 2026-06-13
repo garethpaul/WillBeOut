@@ -120,6 +120,8 @@ isolated credentialed smoke test.
   Tornado, database, OAuth, encrypted-session, and dependency migration.
 - See `docs/plans/2026-06-12-willbeout-first-party-codeql-remediation.md`
   for the first-party CodeQL alert remediation.
+- See `docs/plans/2026-06-13-oauth-error-callbacks.md` for state-bound OAuth
+  denial and provider-error handling with query-redacted request logs.
 - Earlier plans under `docs/plans/` preserve the event access, integer ID,
   XSRF, secure-cookie, HTTPS integration, and CI decisions enforced by
   `make check`.
