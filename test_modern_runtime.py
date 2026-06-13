@@ -216,14 +216,18 @@ class AuthHandlerTest(AsyncHTTPTestCase):
             cookies.load(header)
         return cookies
 
-    def test_oauth_state_round_trip_creates_encrypted_session(self):
-        start = self.fetch("/auth/login?next=/events", follow_redirects=False)
-        self.assertEqual(302, start.code)
-        cookies = self._cookies(start)
-        state = parse_qs(urlparse(start.headers["Location"]).query)["state"][0]
+    def _start_oauth(self):
+        response = self.fetch("/auth/login?next=/events", follow_redirects=False)
+        self.assertEqual(302, response.code)
+        cookies = self._cookies(response)
+        state = parse_qs(urlparse(response.headers["Location"]).query)["state"][0]
         cookie_header = "; ".join(
             "{}={}".format(name, morsel.value) for name, morsel in cookies.items()
         )
+        return state, cookie_header
+
+    def test_oauth_state_round_trip_creates_encrypted_session(self):
+        state, cookie_header = self._start_oauth()
 
         callback = self.fetch(
             "/auth/login?code=code&state=" + state,
@@ -244,6 +248,59 @@ class AuthHandlerTest(AsyncHTTPTestCase):
     def test_oauth_callback_rejects_invalid_state_before_exchange(self):
         response = self.fetch(
             "/auth/login?code=code&state=invalid",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(400, response.code)
+        self.assertEqual([], self.graph.auth_calls)
+
+    def test_oauth_error_rejects_invalid_state_before_handling(self):
+        response = self.fetch(
+            "/auth/login?error=access_denied&state=invalid",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(400, response.code)
+        self.assertEqual([], self.graph.auth_calls)
+
+    def test_oauth_access_denied_clears_state_without_restarting(self):
+        state, cookie_header = self._start_oauth()
+        with self.assertLogs("tornado.access", level="WARNING") as logs:
+            response = self.fetch(
+                "/auth/login?error=access_denied&error_description=provider-secret&state=" + state,
+                headers={"Cookie": cookie_header},
+                follow_redirects=False,
+            )
+
+        self.assertEqual(403, response.code)
+        self.assertEqual(b"Facebook authorization denied", response.body)
+        self.assertNotIn("provider-secret", "\n".join(logs.output))
+        self.assertIn("GET /auth/login", "\n".join(logs.output))
+        self.assertEqual([], self.graph.auth_calls)
+        cookies = self._cookies(response)
+        self.assertEqual("", cookies["facebook_oauth_state"].value)
+        self.assertEqual("", cookies["facebook_oauth_next"].value)
+        self.assertNotIn("Location", response.headers)
+
+    def test_oauth_provider_error_is_stable_and_not_exchanged(self):
+        state, cookie_header = self._start_oauth()
+        with self.assertLogs("tornado.access", level="ERROR") as logs:
+            response = self.fetch(
+                "/auth/login?error=server_error&error_description=provider-secret&state=" + state,
+                headers={"Cookie": cookie_header},
+                follow_redirects=False,
+            )
+
+        self.assertEqual(502, response.code)
+        self.assertEqual(b"Facebook authorization failed", response.body)
+        self.assertNotIn("provider-secret", "\n".join(logs.output))
+        self.assertEqual([], self.graph.auth_calls)
+
+    def test_oauth_callback_rejects_code_and_error_together(self):
+        state, cookie_header = self._start_oauth()
+        response = self.fetch(
+            "/auth/login?code=code&error=access_denied&state=" + state,
+            headers={"Cookie": cookie_header},
             follow_redirects=False,
         )
 

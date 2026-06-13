@@ -15,7 +15,7 @@ lint:
 
 test:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) "$(CHECK_SCRIPT)"
-	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest -v test_modern_runtime.py
+	cd "$(ROOT)" && PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest -v test_modern_runtime.py
 
 contract-test:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) "$(WORKFLOW_CONTRACT_SCRIPT)"
