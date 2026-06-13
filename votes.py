@@ -3,10 +3,11 @@ import tornado.web
 
 class VoteHandler(base.BaseHandler):
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _user_id = self.get_current_user()['id']
         _user_name = self.get_current_user()['name']
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         _suggestion_id = self.get_int_argument('id')
         # check if vote exists
         c = self.db.execute_rowcount(
@@ -26,9 +27,10 @@ class VoteHandler(base.BaseHandler):
 
 class ChangeVoteHandler(base.BaseHandler):
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _suggestion_id = self.get_int_argument('id')
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         _user_id = self.get_current_user()['id']
         self.db.execute(
             "DELETE FROM willbeout_votes WHERE suggestion_id = %s AND user_id = %s AND event_id = %s",

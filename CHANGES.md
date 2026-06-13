@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-13
+
+- Centralized owner-or-Facebook-friend authorization and applied it before all
+  event-scoped attendee, message, vote, suggestion, and availability access.
+
 ## 2026-06-12
 
 - Migrated first-party modules from Python 2 syntax and removed Tornado APIs

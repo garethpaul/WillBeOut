@@ -8,8 +8,9 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from cryptography.fernet import Fernet
 from tornado.httpclient import HTTPClientError
 from tornado.testing import AsyncHTTPTestCase
-from tornado.web import decode_signed_value
+from tornado.web import create_signed_value, decode_signed_value
 
+import base
 import database
 import facebook
 import events
@@ -81,8 +82,10 @@ class FakeHTTPClient:
 
 
 class FakeGraphClient:
-    def __init__(self):
+    def __init__(self, friends=None):
         self.auth_calls = []
+        self.request_calls = []
+        self.friends = friends or []
 
     def authorization_url(self, redirect_uri, state):
         return "https://www.facebook.com/v24.0/dialog/oauth?" + urlencode({
@@ -94,8 +97,39 @@ class FakeGraphClient:
         self.auth_calls.append((redirect_uri, code))
         return {"id": "42", "name": "Ada", "access_token": "secret-token"}
 
-    async def request(self, _path, _access_token, **_parameters):
-        return {"data": []}
+    async def request(self, path, access_token, **parameters):
+        self.request_calls.append((path, access_token, parameters))
+        return {"data": self.friends}
+
+
+class FakeEventDatabase:
+    def __init__(self, event=None):
+        self.event = event
+        self.get_calls = []
+        self.query_calls = []
+        self.execute_calls = []
+        self.rowcount_calls = []
+
+    def reset_protected_calls(self):
+        self.query_calls = []
+        self.execute_calls = []
+        self.rowcount_calls = []
+
+    def get(self, statement, *parameters):
+        self.get_calls.append((statement, parameters))
+        return self.event
+
+    def query(self, statement, *parameters):
+        self.query_calls.append((statement, parameters))
+        return []
+
+    def execute(self, statement, *parameters):
+        self.execute_calls.append((statement, parameters))
+        return 1
+
+    def execute_rowcount(self, statement, *parameters):
+        self.rowcount_calls.append((statement, parameters))
+        return 0
 
 
 class ModernRuntimeTest(unittest.IsolatedAsyncioTestCase):
@@ -192,9 +226,109 @@ class ModernRuntimeTest(unittest.IsolatedAsyncioTestCase):
     def test_friend_visibility_requires_the_exact_owner_id(self):
         payload = {"data": [{"id": "7"}, {"id": "42"}]}
 
-        self.assertTrue(events.EventHandler._friendship_visible(None, payload, "42"))
-        self.assertFalse(events.EventHandler._friendship_visible(None, payload, "99"))
-        self.assertTrue(mobile.EventHandler._friendship_visible(None, payload, "42"))
+        self.assertTrue(base.BaseHandler.friendship_visible(payload, "42"))
+        self.assertFalse(base.BaseHandler.friendship_visible(payload, "99"))
+
+
+class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
+    def get_app(self):
+        self.database = FakeEventDatabase({"id": 1, "userid": "7"})
+        self.graph = FakeGraphClient()
+        self.cipher = SessionCipher(Fernet.generate_key().decode("ascii"))
+        app = facebook.Application(
+            database=self.database,
+            facebook_client=self.graph,
+            session_cipher=self.cipher,
+            cookie_secret="test-cookie-secret",
+            facebook_redirect_uri="https://example.test/auth/login",
+        )
+        app.settings["xsrf_cookies"] = False
+        return app
+
+    def _auth_headers(self):
+        encrypted = self.cipher.encrypt_user({
+            "id": "42",
+            "name": "Ada",
+            "access_token": "secret-token",
+        })
+        signed = create_signed_value(
+            "test-cookie-secret", "user", encrypted
+        ).decode("ascii")
+        return {"Cookie": "user=" + signed}
+
+    def _assert_denied_without_protected_database_access(self, path, method="GET", body=None):
+        self.database.reset_protected_calls()
+        response = self.fetch(
+            path,
+            method=method,
+            body=body,
+            headers=self._auth_headers(),
+            follow_redirects=False,
+        )
+        self.assertEqual(403, response.code, path)
+        self.assertEqual([], self.database.query_calls, path)
+        self.assertEqual([], self.database.execute_calls, path)
+        self.assertEqual([], self.database.rowcount_calls, path)
+
+    def test_unauthorized_event_reads_stop_after_access_lookup(self):
+        for path in [
+            "/messages?event_id=1",
+            "/time?event_id=1",
+            "/attend/data?event_id=1",
+            "/event?event_id=1",
+            "/mobile/event?id=1",
+        ]:
+            self._assert_denied_without_protected_database_access(path)
+
+    def test_unauthorized_event_writes_stop_before_mutation(self):
+        requests = [
+            ("/attend", "event_id=1"),
+            ("/attend/no", "event_id=1"),
+            ("/messages", "id=1&msg=hello&type=message"),
+            ("/delete/message", "ide=2&event_id=1"),
+            ("/vote", "id=2&event_id=1"),
+            ("/change/vote", "id=2&event_id=1"),
+            ("/suggest", "event_id=1&name=a&url=b&address=c&city=d"),
+            ("/time", "event_id=1&availabletimes=1"),
+        ]
+        for path, body in requests:
+            self._assert_denied_without_protected_database_access(
+                path, method="POST", body=body
+            )
+
+    def test_owner_access_skips_facebook_and_reaches_event_data(self):
+        self.database.event = {"id": 1, "userid": "42"}
+        response = self.fetch(
+            "/messages?event_id=1", headers=self._auth_headers()
+        )
+
+        self.assertEqual(200, response.code)
+        self.assertEqual(1, len(self.database.query_calls))
+        self.assertEqual([], self.graph.request_calls)
+
+    def test_friend_access_reaches_authorized_mutation(self):
+        self.graph.friends = [{"id": "7"}]
+        response = self.fetch(
+            "/attend",
+            method="POST",
+            body="event_id=1",
+            headers=self._auth_headers(),
+            follow_redirects=False,
+        )
+
+        self.assertEqual(302, response.code)
+        self.assertEqual(1, len(self.database.execute_calls))
+        self.assertEqual("/me/friends", self.graph.request_calls[0][0])
+
+    def test_missing_event_is_not_disclosed_as_forbidden(self):
+        self.database.event = None
+        response = self.fetch(
+            "/messages?event_id=1", headers=self._auth_headers()
+        )
+
+        self.assertEqual(404, response.code)
+        self.assertEqual([], self.graph.request_calls)
+        self.assertEqual([], self.database.query_calls)
 
 
 class AuthHandlerTest(AsyncHTTPTestCase):

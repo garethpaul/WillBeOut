@@ -5,8 +5,9 @@ import json
 
 class Attend(base.BaseHandler):
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         _user_id = self.get_current_user()['id']
         self.db.execute(
             "INSERT INTO willbeout_attendees (user_id, event_id) VALUES (%s, %s)",
@@ -15,8 +16,9 @@ class Attend(base.BaseHandler):
 
 class AttendNo(base.BaseHandler):
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         _user_id = self.get_current_user()['id']
         self.db.execute(
             "DELETE FROM willbeout_attendees WHERE event_id = %s AND user_id  = %s",
@@ -25,8 +27,9 @@ class AttendNo(base.BaseHandler):
 
 class AttendData(base.BaseHandler):
     @tornado.web.authenticated
-    def get(self):
+    async def get(self):
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         a = self.db.query(
             "SELECT * FROM willbeout_attendees WHERE event_id = %s GROUP BY user_id",
             _event_id)

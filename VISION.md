@@ -25,6 +25,8 @@ Priority:
 - Keep PyMySQL operations parameterized with deterministic cleanup
 - Enforce owner/friend access before rendering event details
 - Enforce owner/friend access before rendering mobile event details
+- Enforce the same owner/friend access before every event-scoped supporting API
+  read or write
 - Return missing desktop events before reading owner fields
 - Validate event ids before querying event detail data
 - Validate vote ids before writing or deleting vote data

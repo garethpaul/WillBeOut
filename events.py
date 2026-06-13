@@ -7,15 +7,8 @@ from urllib.parse import unquote
 class EventHandler(base.BaseHandler):
     @tornado.web.authenticated
     async def get(self):
-        # access trigger
-        self.access = 0
         _eventid = self.get_int_argument('event_id')
-        _id = self.get_current_user()['id']
-        # get owner_id
-        self.event = self.db.get(
-            "SELECT * FROM willbeout_events WHERE id = %s", _eventid)
-        if not self.event:
-            raise tornado.web.HTTPError(404)
+        self.event = await self.require_event_access(_eventid)
         self.suggest = self.db.query("""select a.id, a.event_id, a.address, a.city, a.name, a.url, a.user_id, a.user_name, count(b.suggestion_id) as friends from willbeout_suggest as a
         LEFT JOIN willbeout_votes as b ON a.id = b.suggestion_id
         WHERE a.event_id = %s
@@ -23,26 +16,6 @@ class EventHandler(base.BaseHandler):
         self.votes = self.db.query("""select suggestion_id from willbeout_votes where event_id = %s and user_id = %s group by suggestion_id;
         """, _eventid, int(_id))
 
-        owner_id = str(self.event['userid'])
-        if owner_id == _id:
-            self.access = 1
-        streams = await self.facebook_request(
-            "/me/friends", self.current_user["access_token"], fields="id", limit=500
-        )
-        self._go(streams, owner_id)
-
-    def _friendship_visible(self, streams, owner_id):
-        if isinstance(streams, dict):
-            data = streams.get("data")
-            return isinstance(data, list) and any(
-                isinstance(friend, dict) and str(friend.get("id")) == owner_id
-                for friend in data
-            )
-        return False
-
-    def _go(self, streams, owner_id):
-        if self.access != 1 and not self._friendship_visible(streams, owner_id):
-            raise tornado.web.HTTPError(403)
         self.render(
             "event.html",
             event=self.event,
@@ -74,10 +47,11 @@ class EventsHandler(base.BaseHandler):
 
 class TimeHandler(base.BaseHandler):
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _user_id = self.get_current_user()['id']
         _user_name = self.get_current_user()['name']
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         _times = self.get_argument('availabletimes')
         self.db.execute(
             "DELETE FROM willbeout_availability WHERE event_id = %s and user_id = %s",
@@ -90,9 +64,10 @@ class TimeHandler(base.BaseHandler):
         self.redirect('/event?event_id=' + str(_event_id))
 
     @tornado.web.authenticated
-    def get(self):
+    async def get(self):
         _json = []
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         for i in self.db.query(
             'SELECT * FROM willbeout_availability WHERE event_id = %s ORDER BY time',
                 _event_id):

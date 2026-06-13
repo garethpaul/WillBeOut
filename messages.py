@@ -7,20 +7,22 @@ from urllib.parse import quote, unquote
 
 class DMHandler(base.BaseHandler):
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _message_id = self.get_int_argument('ide')
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         _user_id = self.get_current_user()['id']
         self.db.execute(
-            "DELETE FROM willbeout_messages WHERE id = %s AND user_id = %s",
-            _message_id, _user_id)
+            "DELETE FROM willbeout_messages WHERE id = %s AND user_id = %s AND event_id = %s",
+            _message_id, _user_id, _event_id)
         self.redirect('/event?event_id=' + str(_event_id))
 
 
 class MessageHandler(base.BaseHandler):
     @tornado.web.authenticated
-    def get(self):
+    async def get(self):
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         msgs = self.db.query(
             "SELECT id, user_id, msg, d FROM willbeout_messages WHERE event_id = %s ORDER BY d DESC",
             _event_id)
@@ -31,10 +33,11 @@ class MessageHandler(base.BaseHandler):
         self.write(json.dumps(_json))
 
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _id = self.get_current_user()['id']
         _msg = self.get_argument('msg')
         _event_id = self.get_int_argument('id')
+        await self.require_event_access(_event_id)
         _name = self.get_current_user()['name']
         _type = self.get_argument('type', 'message')
         self.db.execute(

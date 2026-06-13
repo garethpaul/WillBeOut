@@ -46,3 +46,32 @@ class BaseHandler(tornado.web.RequestHandler):
 
     async def facebook_request(self, path, access_token, **parameters):
         return await self.facebook_client.request(path, access_token, **parameters)
+
+    @staticmethod
+    def friendship_visible(streams, owner_id):
+        if not isinstance(streams, dict):
+            return False
+        data = streams.get("data")
+        return isinstance(data, list) and any(
+            isinstance(friend, dict) and str(friend.get("id")) == str(owner_id)
+            for friend in data
+        )
+
+    async def require_event_access(self, event_id):
+        event = self.db.get(
+            "SELECT * FROM willbeout_events WHERE id = %s", event_id
+        )
+        if not event:
+            raise tornado.web.HTTPError(404)
+
+        current_user = self.get_current_user()
+        owner_id = str(event["userid"])
+        if owner_id == str(current_user["id"]):
+            return event
+
+        streams = await self.facebook_request(
+            "/me/friends", current_user["access_token"], fields="id", limit=500
+        )
+        if not self.friendship_visible(streams, owner_id):
+            raise tornado.web.HTTPError(403)
+        return event
