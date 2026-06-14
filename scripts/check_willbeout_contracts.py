@@ -26,6 +26,7 @@ OAUTH_ERROR_PLAN = ROOT / "docs" / "plans" / "2026-06-13-oauth-error-callbacks.m
 EVENT_ENDPOINT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-13-event-scoped-endpoint-authorization.md"
 COOKIE_MAX_AGE_PLAN = ROOT / "docs" / "plans" / "2026-06-13-signed-cookie-max-age-enforcement.md"
 MAKE_ROOT_PROTECTION_PLAN = ROOT / "docs" / "plans" / "2026-06-14-make-root-override-protection.md"
+EVENT_VOTE_USER_PLAN = ROOT / "docs" / "plans" / "2026-06-14-event-vote-user-binding.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -288,6 +289,53 @@ def test_event_rendering_requires_owner_or_friend_access():
         source.index("await self.require_event_access(_eventid)") < source.index("self.suggest = self.db.query"),
         "EventHandler must enforce access before rendering event.html",
     )
+
+
+def test_event_page_binds_authenticated_user_to_vote_query():
+    source = EVENTS.read_text()
+    base_template = BASE_TEMPLATE.read_text()
+    event_template = EVENT_TEMPLATE.read_text()
+    handler = source.split("class EventHandler", 1)[1].split("class EventsHandler", 1)[0]
+    access_guard = "self.event = await self.require_event_access(_eventid)"
+    user_binding = "_user_id = self.get_current_user()['id']"
+    vote_query = '""", _eventid, int(_user_id))'
+
+    assert_true(user_binding in handler, "EventHandler must bind the authenticated user id")
+    assert_true(vote_query in handler, "EventHandler vote query must use the bound user id")
+    assert_true(
+        handler.index(access_guard) < handler.index(user_binding) < handler.index(vote_query),
+        "EventHandler must authorize before binding the vote query user",
+    )
+    assert_true(
+        re.search(r"\b_id\b", handler) is None,
+        "EventHandler must not reference an undefined standalone _id",
+    )
+    assert_true(
+        "current_user['link']" not in base_template,
+        "authenticated templates must not require the unavailable Graph link field",
+    )
+    assert_true(
+        "https://www.facebook.com/{{ escape(current_user['id']) }}" in base_template,
+        "authenticated profile links must derive from the bound Graph user id",
+    )
+    for legacy_attribute in ["event.id", "event.place", "event.f", "event.t"]:
+        assert_true(
+            legacy_attribute not in event_template,
+            "event template must use DictCursor-compatible access: " + legacy_attribute,
+        )
+    assert_true(
+        'postToFeed("https://willbeout.com/event?id={{ event[\'id\'] }}"' in event_template,
+        "event sharing must use dictionary access for the event id",
+    )
+
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+    for contract in [
+        "test_owner_event_page_binds_authenticated_user_to_vote_query",
+        'self.assertIn("willbeout_votes", vote_statement)',
+        "self.assertEqual((1, 42), vote_parameters)",
+        "self.assertEqual(200, response.code)",
+    ]:
+        assert_true(contract in runtime_tests, "runtime tests must preserve vote user binding: " + contract)
 
 
 def test_all_event_scoped_endpoints_require_shared_access():
@@ -764,6 +812,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(EVENT_ENDPOINT_ACCESS_PLAN, "event-scoped endpoint authorization")
     assert_completed_plan(COOKIE_MAX_AGE_PLAN, "signed cookie max-age enforcement")
     assert_completed_plan(MAKE_ROOT_PROTECTION_PLAN, "Make root override protection")
+    assert_completed_plan(EVENT_VOTE_USER_PLAN, "event vote user binding")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -779,6 +828,7 @@ def main():
         test_state_changes_require_post_and_xsrf_tokens,
         test_auth_next_redirects_are_local_only,
         test_event_rendering_requires_owner_or_friend_access,
+        test_event_page_binds_authenticated_user_to_vote_query,
         test_all_event_scoped_endpoints_require_shared_access,
         test_event_ids_are_validated_before_database_queries,
         test_vote_ids_are_validated_before_database_writes,

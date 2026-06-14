@@ -114,6 +114,10 @@ isolated credentialed smoke test.
 - Tornado XSRF checks protect writes, and state changes remain POST-only.
 - Templates use Tornado autoescaping; only generated XSRF form markup is
   rendered explicitly as raw HTML.
+- Authenticated profile links derive from the verified Graph user ID and do not
+  require an unavailable legacy `link` field in the encrypted session payload.
+- Event templates use dictionary access compatible with the configured
+  PyMySQL `DictCursor` rows.
 - Cookie, session, Meta, and MySQL secrets must never be committed.
 
 ## Maintenance Notes
@@ -128,6 +132,8 @@ isolated credentialed smoke test.
   denial and provider-error handling with query-redacted request logs.
 - See `docs/plans/2026-06-13-event-scoped-endpoint-authorization.md` for shared
   authorization across event pages and supporting data endpoints.
+- See `docs/plans/2026-06-14-event-vote-user-binding.md` for binding the
+  authenticated user to the desktop event page's vote lookup.
 - Earlier plans under `docs/plans/` preserve the event access, integer ID,
   XSRF, secure-cookie, HTTPS integration, and CI decisions enforced by
   `make check`.

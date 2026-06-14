@@ -47,7 +47,7 @@
 	            </ul>
 		  <span class='pull-right' style='margin-top:4px; border:1px solid white; position:relative; z-index:9999'>
 			<span class='popover-bottom' data-trigger='click' data-placement="bottom" rel="popover" 
-			data-content="<a class='btn-auth btn-facebook' href='{{ escape(current_user['link'])}}'>Facebook Profile</span>" 
+			data-content="<a class='btn-auth btn-facebook' href='https://www.facebook.com/{{ escape(current_user['id']) }}'>Facebook Profile</a>"
 			data-original-title="{{ escape(current_user['name']) }}">
 			<img src='https://graph.facebook.com/{{ escape(current_user['id']) }}/picture?type=large' />
 			</span>
