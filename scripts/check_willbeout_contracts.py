@@ -25,6 +25,7 @@ MODERN_RUNTIME_PLAN = ROOT / "docs" / "plans" / "2026-06-12-modern-python-web-ru
 OAUTH_ERROR_PLAN = ROOT / "docs" / "plans" / "2026-06-13-oauth-error-callbacks.md"
 EVENT_ENDPOINT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-13-event-scoped-endpoint-authorization.md"
 COOKIE_MAX_AGE_PLAN = ROOT / "docs" / "plans" / "2026-06-13-signed-cookie-max-age-enforcement.md"
+MAKE_ROOT_PROTECTION_PLAN = ROOT / "docs" / "plans" / "2026-06-14-make-root-override-protection.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -705,10 +706,20 @@ def test_modern_runtime_dependency_and_api_contracts():
 
 def test_makefile_is_root_independent():
     makefile = MAKEFILE.read_text()
+    makefile_lines = set(makefile.splitlines())
 
     assert_true(
-        "ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))" in makefile,
-        "Makefile must resolve the repository root",
+        "override ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))" in makefile_lines,
+        "Makefile must protect the repository root",
+    )
+    assert_true("PYTHON ?= python3" in makefile_lines, "Makefile must preserve the Python command override")
+    assert_true(
+        '\tfind "$(ROOT)" -type f \\( -name \'*.pyc\' -o -name \'*.pyo\' \\) -delete' in makefile_lines,
+        "Makefile cleanup must remove Python bytecode from the repository root",
+    )
+    assert_true(
+        '\tfind "$(ROOT)" -type d -name \'__pycache__\' -prune -exec rm -rf {} +' in makefile_lines,
+        "Makefile cleanup must remove Python cache directories from the repository root",
     )
     assert_true(
         "CHECK_SCRIPT := $(ROOT)/scripts/check_willbeout_contracts.py" in makefile,
@@ -752,6 +763,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(OAUTH_ERROR_PLAN, "OAuth error callbacks")
     assert_completed_plan(EVENT_ENDPOINT_ACCESS_PLAN, "event-scoped endpoint authorization")
     assert_completed_plan(COOKIE_MAX_AGE_PLAN, "signed cookie max-age enforcement")
+    assert_completed_plan(MAKE_ROOT_PROTECTION_PLAN, "Make root override protection")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:

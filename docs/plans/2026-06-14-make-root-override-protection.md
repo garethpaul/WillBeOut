@@ -1,6 +1,6 @@
 # Make Root Override Protection
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -37,3 +37,24 @@ delete generated artifacts from an unintended directory.
 - Do not change Python runtime behavior, dependencies, workflows, templates,
   vendored assets, public APIs, or deployment configuration.
 - Do not merge or close any pull request without explicit owner authorization.
+
+## Work Completed
+
+- Protected the Makefile-derived root while preserving the Python command
+  override and every existing target.
+- Added exact dependency-free contracts for protected derivation, rooted
+  cleanup, checker/runtime paths, and this completed plan.
+
+## Verification Results
+
+- Python compilation and all 22 dependency-free contracts passed.
+- Local, external-working-directory, and hostile `ROOT` full `make check`
+  gates each passed 22 static contracts, 21 no-network runtime tests, and 18
+  workflow mutations under the exact five-package lock.
+- `uv pip check` passed and `pip-audit==2.10.0` reported no known
+  vulnerabilities in `requirements.lock`.
+- Nine focused mutations covering root derivation, Python override semantics,
+  rooted cleanup, checker/runtime paths, and completed-plan status were
+  rejected.
+- Structured workflow/config, whitespace, explicit-artifact, and changed-line
+  credential audits passed before shipment.

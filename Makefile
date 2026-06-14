@@ -1,5 +1,5 @@
 PYTHON ?= python3
-ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+override ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CHECK_SCRIPT := $(ROOT)/scripts/check_willbeout_contracts.py
 WORKFLOW_CONTRACT_SCRIPT := $(ROOT)/scripts/test_workflow_contract.py
 PYTHON_FILES := $(addprefix $(ROOT)/,__init__.py attendees.py auth.py base.py cal.py database.py events.py facebook.py facebook_client.py messages.py mobile.py prettydate.py session.py votes.py)
