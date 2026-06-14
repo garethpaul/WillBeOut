@@ -1,5 +1,16 @@
 # Changes
 
+## 2026-06-14
+
+- Fixed authorized desktop event pages to bind the authenticated user ID before
+  loading that user's votes.
+- Derived authenticated Facebook profile links from the verified user ID
+  instead of requiring the unavailable legacy Graph `link` field.
+- Made the event share action use dictionary access compatible with PyMySQL
+  `DictCursor` rows.
+- Added a no-network owner-page regression and mutation-sensitive static
+  coverage for the parameterized vote lookup.
+
 ## 2026-06-13
 
 - Enforced the documented one-day user session and ten-minute OAuth cookie
