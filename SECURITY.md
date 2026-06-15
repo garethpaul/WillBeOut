@@ -60,7 +60,8 @@ Helpful reports include:
 - Fixed-version jQuery and jQuery Mobile resources use reviewed SHA-384 SRI
   hashes with anonymous CORS. Treat URL, version, hash, and tag-count changes
   as supply-chain changes requiring review.
-- GitHub Actions installs the exact production lock and runs `make check` with
+- GitHub Actions installs the exact production lock with pip hash verification
+  and runs `make check` with
   immutable actions, fixed Ubuntu runners, read-only permissions,
   credential-free checkout, superseded-run cancellation, and structural policy mutations;
   review workflow, checker, and template integration changes as part of the
@@ -82,7 +83,7 @@ performing protected data queries or mutations.
 
 ## Dependency and Supply Chain Security
 
-Dependency updates should come from trusted package managers and should keep lockfiles in sync when lockfiles exist. Do not commit credentials, private keys, tokens, generated secrets, or machine-local configuration. If a vulnerability depends on a compromised package, typosquatting risk, insecure transitive dependency, or unsafe build step, include the package name, affected version, and the path through which it is used.
+Dependency updates should come from trusted package managers and should keep lockfiles in sync when lockfiles exist. Production lock entries must remain exactly pinned with reviewed SHA-256 hashes, and canonical installs must use pip's `--require-hashes` mode. Do not commit credentials, private keys, tokens, generated secrets, or machine-local configuration. If a vulnerability depends on a compromised package, typosquatting risk, insecure transitive dependency, or unsafe build step, include the package name, affected version, and the path through which it is used.
 
 ## Safe Research Guidelines
 

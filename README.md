@@ -40,7 +40,7 @@ git clone https://github.com/garethpaul/WillBeOut.git
 cd WillBeOut
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install -r requirements.lock
+python -m pip install --require-hashes -r requirements.lock
 ```
 
 The exact graph should pass:
@@ -48,6 +48,12 @@ The exact graph should pass:
 ```bash
 python -m pip check
 pip-audit -r requirements.lock
+```
+
+After a reviewed direct dependency change, regenerate the universal hash lock:
+
+```bash
+uv pip compile requirements.txt --generate-hashes --universal --python-version 3.10 --output-file requirements.lock
 ```
 
 ## Configuration
@@ -84,7 +90,7 @@ The `Procfile` uses the same Python 3 entry point.
 - `make build`, `make verify`, and `make check` provide stable repository gates.
 - `make check` removes Python bytecode before and after verification.
 
-GitHub Actions installs the exact lock and runs `make check` on Python 3.10,
+GitHub Actions installs the exact lock with `--require-hashes` and runs `make check` on Python 3.10,
 3.12, and 3.14 under read-only permissions on Ubuntu 24.04. A separate Python
 3.12 job runs the pinned resolved dependency audit. CodeQL analyzes Actions,
 Python, and first-party JavaScript; only reviewed vendored Bootstrap is

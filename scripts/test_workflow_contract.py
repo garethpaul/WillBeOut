@@ -27,7 +27,10 @@ mutations={
 'reduced matrix':mutate('reduced matrix','["3.10", "3.12", "3.14"]','["3.12"]'),
 'continued failure':mutate('continued failure','    strategy:','    continue-on-error: true\n    strategy:'),
 'wrong Python selector':mutate('wrong Python selector','python-version: ${{ matrix.python-version }}','python-version: "3.12"'),
-'floating dependency install':mutate('floating dependency install','python -m pip install --disable-pip-version-check -r requirements.lock','python -m pip install tornado'),
+'missing hash enforcement':mutate('missing hash enforcement',' --require-hashes',''),
+'direct manifest install':mutate('direct manifest install','-r requirements.lock','-r requirements.txt'),
+'floating dependency install':mutate('floating dependency install','python -m pip install --disable-pip-version-check --require-hashes -r requirements.lock','python -m pip install tornado'),
+'extra unhashed install':mutate('extra unhashed install','          make check','          python -m pip install -r requirements.txt\n          make check'),
 'removed dependency audit':mutate('removed dependency audit','          pip-audit -r requirements.lock\n',''),
 'weakened gate':mutate('weakened gate','          make check','          make lint'),
 }

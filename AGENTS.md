@@ -16,7 +16,7 @@
 
 ## Development commands
 
-- Install dependencies: `python3 -m pip install -r requirements.lock`
+- Install dependencies: `python3 -m pip install --require-hashes -r requirements.lock`
 - Full baseline: `make check`
 - Combined verification: `make verify`
 - Lint/static checks: `make lint`
@@ -24,12 +24,13 @@
 - Tests: `make test`
 - Build: `make build`
 - Dependency audit: `pip-audit -r requirements.lock`
+- Regenerate the lock after reviewed manifest changes: `uv pip compile requirements.txt --generate-hashes --universal --python-version 3.10 --output-file requirements.lock`
 
 ## Coding conventions
 
 - Language mix noted in the README: Python (24), JavaScript (12), shell (1).
 - Keep runtime tests dependency-injected and no-network.
-- Keep Tornado 6.5.6, PyMySQL 1.2.0, cryptography 48.0.0, and the resolved lock exact.
+- Keep Tornado 6.5.6, PyMySQL 1.2.0, cryptography 48.0.1, and the hash-verified resolved lock exact.
 
 ## Testing guidance
 

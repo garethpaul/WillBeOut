@@ -1,5 +1,14 @@
 # Changes
 
+## 2026-06-15
+
+- Added SHA-256 artifact hashes to the resolved production lock and made
+  canonical pip installs fail closed with `--require-hashes`.
+- Updated cryptography from 48.0.0 to 48.0.1 after the pinned audit identified
+  GHSA-537c-gmf6-5ccf in the original exact pin.
+- Added semantic lock contracts and hostile mutations for missing hashes,
+  weak algorithms, dependency drift, marker loss, and unhashed workflow paths.
+
 ## 2026-06-14
 
 - Fixed authorized desktop event pages to bind the authenticated user ID before

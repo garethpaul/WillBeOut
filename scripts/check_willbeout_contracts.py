@@ -4,6 +4,11 @@ import hashlib
 import re
 from pathlib import Path
 
+from dependency_lock_contract import (
+    EXPECTED_GUIDANCE,
+    validate as validate_dependency_lock,
+    validate_guidance,
+)
 from workflow_contract import validate as validate_workflow
 
 
@@ -27,6 +32,7 @@ EVENT_ENDPOINT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-13-event-scoped-
 COOKIE_MAX_AGE_PLAN = ROOT / "docs" / "plans" / "2026-06-13-signed-cookie-max-age-enforcement.md"
 MAKE_ROOT_PROTECTION_PLAN = ROOT / "docs" / "plans" / "2026-06-14-make-root-override-protection.md"
 EVENT_VOTE_USER_PLAN = ROOT / "docs" / "plans" / "2026-06-14-event-vote-user-binding.md"
+HASH_VERIFIED_LOCK_PLAN = ROOT / "docs" / "plans" / "2026-06-15-hash-verified-production-lock.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -664,12 +670,12 @@ def test_ci_workflow_runs_make_check():
 
 def test_modern_runtime_dependency_and_api_contracts():
     requirements = REQUIREMENTS.read_text()
-    assert_true(
-        requirements == "cryptography==48.0.0\nPyMySQL==1.2.0\ntornado==6.5.6\n",
-        "requirements.txt must keep the exact modern direct graph",
-    )
-    expected_lock = "cffi==2.0.0\ncryptography==48.0.0\npycparser==3.0\nPyMySQL==1.2.0\ntornado==6.5.6\n"
-    assert_true(REQUIREMENTS_LOCK.read_text() == expected_lock, "requirements.lock must keep the exact audited graph")
+    lock = REQUIREMENTS_LOCK.read_text()
+    errors = validate_dependency_lock(requirements, lock)
+    assert_true(not errors, "dependency lock must {0}".format(errors[0]) if errors else "")
+    guidance = {path: (ROOT / path).read_text() for path in EXPECTED_GUIDANCE}
+    guidance_errors = validate_guidance(guidance)
+    assert_true(not guidance_errors, "dependency guidance must {0}".format(guidance_errors[0]) if guidance_errors else "")
     combined = "\n".join(path.read_text() for path in ROOT.glob("*.py"))
     for retired in [
         "tornado.database",
@@ -720,13 +726,15 @@ def test_modern_runtime_dependency_and_api_contracts():
 
     workflow = CI_WORKFLOW.read_text()
     for contract in [
-        "python -m pip install --disable-pip-version-check -r requirements.lock",
+        "python -m pip install --disable-pip-version-check --require-hashes -r requirements.lock",
         "dependency-audit:",
         "pip-audit==2.10.0",
         "pip-audit -r requirements.lock",
     ]:
         assert_true(contract in workflow, "CI workflow must keep {0}".format(contract))
     assert_true(workflow.count("persist-credentials: false") == 2, "both workflow jobs must disable persisted credentials")
+
+    assert_true(HASH_VERIFIED_LOCK_PLAN.is_file(), "hash lock plan must remain tracked")
 
     plan = MODERN_RUNTIME_PLAN.read_text()
     assert_true(plan.count("status: completed") == 1, "modern runtime plan must record one completed status")

@@ -6,6 +6,8 @@ CHECKOUT_BLOCK = "\n".join(("      - name: Check out repository", f"        uses
 
 def validate(workflow):
     errors=[]
+    production_install="python -m pip install --disable-pip-version-check --require-hashes -r requirements.lock"
+    audit_install="python -m pip install --disable-pip-version-check pip-audit==2.10.0"
     actions=re.findall(r"^[ \t]*(?:-[ \t]*)?uses:[ \t]*(\S+)(?:[ \t]+#.*)?$",workflow,re.MULTILINE)
     if "  push:\n    branches:\n      - master" not in workflow: errors.append("validate pushes to master")
     if len(re.findall(r"^  pull_request:$",workflow,re.MULTILINE))!=1: errors.append("validate pull requests exactly once")
@@ -23,7 +25,9 @@ def validate(workflow):
     if workflow.count("persist-credentials:")!=2: errors.append("configure checkout credential persistence exactly twice")
     if len(re.findall(r"^          python-version: \$\{\{ matrix\.python-version \}\}$",workflow,re.MULTILINE))!=1: errors.append("select the matrix Python version exactly once")
     if len(re.findall(r"^          python-version: \"3\.12\"$",workflow,re.MULTILINE))!=1: errors.append("use Python 3.12 for dependency audit")
-    if workflow.count("python -m pip install --disable-pip-version-check -r requirements.lock")!=1: errors.append("install the exact production lock once")
+    if workflow.count(production_install)!=1: errors.append("install the hash-verified production lock exactly once")
+    install_lines=[line.strip() for line in workflow.splitlines() if line.strip().startswith("python -m pip install ")]
+    if install_lines != [production_install,audit_install]: errors.append("use only the reviewed production and audit installation commands")
     if workflow.count("make check")!=1: errors.append("run the canonical gate exactly once")
     if workflow.count("pip-audit==2.10.0")!=1 or workflow.count("pip-audit -r requirements.lock")!=1: errors.append("run the pinned resolved dependency audit exactly once")
     if "continue-on-error" in workflow: errors.append("not allow verification failures")

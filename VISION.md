@@ -20,7 +20,8 @@ Priority:
 - Keep Facebook access tokens encrypted before secure signed-cookie storage
 - Enforce signed-cookie age limits during browser and server verification
 - Require POST and Tornado XSRF validation for every authenticated state change
-- Keep the Python 3.10+ runtime and exact resolved dependency audit explicit
+- Keep the Python 3.10+ runtime, hash-verified production lock, and exact
+  resolved dependency audit explicit
 - Keep OAuth state bound to secure cookies and callback URLs configured as HTTPS
 - Keep Meta Graph calls bounded, redacted, and exact-ID authorization based
 - Keep PyMySQL operations parameterized with deterministic cleanup
