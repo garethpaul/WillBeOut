@@ -35,6 +35,7 @@ MAKE_ROOT_PROTECTION_PLAN = ROOT / "docs" / "plans" / "2026-06-14-make-root-over
 EVENT_VOTE_USER_PLAN = ROOT / "docs" / "plans" / "2026-06-14-event-vote-user-binding.md"
 HASH_VERIFIED_LOCK_PLAN = ROOT / "docs" / "plans" / "2026-06-15-hash-verified-production-lock.md"
 VOTE_SUGGESTION_BINDING_PLAN = ROOT / "docs" / "plans" / "2026-06-16-vote-suggestion-event-binding.md"
+TORNADO_SECURITY_UPDATE_PLAN = ROOT / "docs" / "plans" / "2026-06-16-tornado-6.5.7-security-update.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -912,6 +913,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(MAKE_ROOT_PROTECTION_PLAN, "Make root override protection")
     assert_completed_plan(EVENT_VOTE_USER_PLAN, "event vote user binding")
     assert_completed_plan(VOTE_SUGGESTION_BINDING_PLAN, "vote suggestion event binding")
+    assert_completed_plan(TORNADO_SECURITY_UPDATE_PLAN, "Tornado 6.5.7 security update")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:

@@ -30,7 +30,7 @@
 
 - Language mix noted in the README: Python (24), JavaScript (12), shell (1).
 - Keep runtime tests dependency-injected and no-network.
-- Keep Tornado 6.5.6, PyMySQL 1.2.0, cryptography 48.0.1, and the hash-verified resolved lock exact.
+- Keep Tornado 6.5.7, PyMySQL 1.2.0, cryptography 48.0.1, and the hash-verified resolved lock exact.
 
 ## Testing guidance
 

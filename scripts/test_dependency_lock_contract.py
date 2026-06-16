@@ -25,16 +25,24 @@ if guidance_errors:
 
 unhashed_tornado = re.sub(
     r"(?ms)^(tornado==.*?)(?=^[A-Za-z0-9_.-]+==|\Z)",
-    "tornado==6.5.6\n",
+    "tornado==6.5.7\n",
     LOCK,
     count=1,
 )
 mutations = {
     "missing hashes": (DIRECT, unhashed_tornado),
+    "missing Tornado artifact": (
+        DIRECT,
+        LOCK.replace(
+            "    --hash=sha256:148b2eb15c2c765a50796172c1e499649b35f30d2e3c3d3e15913cfa56bfb163 \\\n",
+            "",
+            1,
+        ),
+    ),
     "wrong hash algorithm": (DIRECT, LOCK.replace("--hash=sha256:", "--hash=sha512:", 1)),
     "short hash": (DIRECT, re.sub(r"sha256:[0-9a-f]{64}", "sha256:abcd", LOCK, count=1)),
     "unpinned requirement": (DIRECT, LOCK.replace("pymysql==1.2.0", "pymysql>=1.2.0", 1)),
-    "version drift": (DIRECT, LOCK.replace("tornado==6.5.6", "tornado==6.5.5", 1)),
+    "version drift": (DIRECT, LOCK.replace("tornado==6.5.7", "tornado==6.5.6", 1)),
     "unexpected package": (DIRECT, LOCK + "example==1.0 --hash=sha256:" + "0" * 64 + "\n"),
     "missing Python 3.10 marker": (DIRECT, LOCK.replace(" ; python_full_version < '3.11'", "", 1)),
     "direct and lock drift": (DIRECT.replace("PyMySQL==1.2.0", "PyMySQL==1.1.2"), LOCK),

@@ -7,7 +7,7 @@
 
 WillBeOut is a Tornado event-coordination application with Meta login and
 MySQL persistence. The maintained runtime targets Python 3.10 or newer,
-Tornado 6.5.6, PyMySQL 1.2.0, and an explicit Meta Graph API v24.0 boundary.
+Tornado 6.5.7, PyMySQL 1.2.0, and an explicit Meta Graph API v24.0 boundary.
 
 The repository keeps live services outside automated tests. Fake database,
 HTTP, Graph, and session dependencies exercise the runtime without credentials
