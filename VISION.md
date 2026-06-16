@@ -32,6 +32,7 @@ Priority:
 - Return missing desktop events before reading owner fields
 - Validate event ids before querying event detail data
 - Validate vote ids before writing or deleting vote data
+- Bind vote suggestions to the authorized event before storage
 - Validate attendee event ids before reading or writing attendance data
 - Validate availability event ids before reading or writing availability data
 - Validate message event and delete ids before reading or writing message data

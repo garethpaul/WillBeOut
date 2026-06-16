@@ -104,8 +104,9 @@ class FakeGraphClient:
 
 
 class FakeEventDatabase:
-    def __init__(self, event=None):
+    def __init__(self, event=None, suggestion=None):
         self.event = event
+        self.suggestion = suggestion
         self.get_calls = []
         self.query_calls = []
         self.execute_calls = []
@@ -118,6 +119,8 @@ class FakeEventDatabase:
 
     def get(self, statement, *parameters):
         self.get_calls.append((statement, parameters))
+        if "willbeout_suggest" in statement:
+            return self.suggestion
         return self.event
 
     def query(self, statement, *parameters):
@@ -322,6 +325,9 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
 
         self.assertEqual(200, response.code)
         self.assertEqual(2, len(self.database.query_calls))
+        suggestion_statement, suggestion_parameters = self.database.query_calls[0]
+        self.assertIn("a.event_id = b.event_id", suggestion_statement)
+        self.assertEqual((1,), suggestion_parameters)
         vote_statement, vote_parameters = self.database.query_calls[1]
         self.assertIn("willbeout_votes", vote_statement)
         self.assertEqual((1, 42), vote_parameters)
@@ -340,6 +346,54 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
         self.assertEqual(302, response.code)
         self.assertEqual(1, len(self.database.execute_calls))
         self.assertEqual("/me/friends", self.graph.request_calls[0][0])
+
+    def test_vote_mutations_reject_suggestion_outside_authorized_event(self):
+        self.database.event = {"id": 1, "userid": "42"}
+        self.database.suggestion = None
+
+        for path in ("/vote", "/change/vote"):
+            self.database.reset_protected_calls()
+            get_call_count = len(self.database.get_calls)
+            response = self.fetch(
+                path,
+                method="POST",
+                body="id=2&event_id=1",
+                headers=self._auth_headers(),
+                follow_redirects=False,
+            )
+
+            self.assertEqual(404, response.code, path)
+            self.assertEqual([], self.database.query_calls, path)
+            self.assertEqual([], self.database.execute_calls, path)
+            self.assertEqual([], self.database.rowcount_calls, path)
+            suggestion_statement, suggestion_parameters = self.database.get_calls[get_call_count + 1]
+            self.assertIn("willbeout_suggest", suggestion_statement)
+            self.assertEqual((2, 1), suggestion_parameters)
+
+    def test_vote_mutations_accept_suggestion_bound_to_authorized_event(self):
+        self.database.event = {"id": 1, "userid": "42"}
+        self.database.suggestion = {"id": 2, "event_id": 1}
+
+        response = self.fetch(
+            "/vote",
+            method="POST",
+            body="id=2&event_id=1",
+            headers=self._auth_headers(),
+            follow_redirects=False,
+        )
+        self.assertEqual(302, response.code)
+        self.assertEqual(2, len(self.database.rowcount_calls))
+
+        self.database.reset_protected_calls()
+        response = self.fetch(
+            "/change/vote",
+            method="POST",
+            body="id=2&event_id=1",
+            headers=self._auth_headers(),
+            follow_redirects=False,
+        )
+        self.assertEqual(302, response.code)
+        self.assertEqual(1, len(self.database.execute_calls))
 
     def test_missing_event_is_not_disclosed_as_forbidden(self):
         self.database.event = None

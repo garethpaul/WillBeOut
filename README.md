@@ -115,6 +115,8 @@ isolated credentialed smoke test.
 - Owner/friend checks require an exact matching friend ID.
 - Event-scoped attendee, message, vote, suggestion, and availability endpoints
   enforce the same owner-or-friend decision before protected reads or writes.
+- Votes require the suggestion to belong to the authorized event before any
+  duplicate check, insertion, or deletion.
 - PyMySQL operations keep SQL and parameters separate, roll back failed writes,
   and close every connection.
 - Tornado XSRF checks protect writes, and state changes remain POST-only.
@@ -140,6 +142,8 @@ isolated credentialed smoke test.
   authorization across event pages and supporting data endpoints.
 - See `docs/plans/2026-06-14-event-vote-user-binding.md` for binding the
   authenticated user to the desktop event page's vote lookup.
+- See `docs/plans/2026-06-16-vote-suggestion-event-binding.md` for isolating
+  vote mutations to suggestions within the authorized event.
 - Earlier plans under `docs/plans/` preserve the event access, integer ID,
   XSRF, secure-cookie, HTTPS integration, and CI decisions enforced by
   `make check`.

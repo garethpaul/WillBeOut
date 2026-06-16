@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Static safety contracts for the legacy WillBeOut Tornado app."""
+import ast
 import hashlib
 import re
 from pathlib import Path
@@ -33,6 +34,7 @@ COOKIE_MAX_AGE_PLAN = ROOT / "docs" / "plans" / "2026-06-13-signed-cookie-max-ag
 MAKE_ROOT_PROTECTION_PLAN = ROOT / "docs" / "plans" / "2026-06-14-make-root-override-protection.md"
 EVENT_VOTE_USER_PLAN = ROOT / "docs" / "plans" / "2026-06-14-event-vote-user-binding.md"
 HASH_VERIFIED_LOCK_PLAN = ROOT / "docs" / "plans" / "2026-06-15-hash-verified-production-lock.md"
+VOTE_SUGGESTION_BINDING_PLAN = ROOT / "docs" / "plans" / "2026-06-16-vote-suggestion-event-binding.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -65,6 +67,22 @@ VENDORED_BOOTSTRAP = ROOT / "static" / "js" / "bootstrap.js"
 def assert_true(condition, label):
     if not condition:
         raise AssertionError(label)
+
+
+def registered_contract_tests():
+    tree = ast.parse(Path(__file__).read_text())
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "main":
+            for statement in node.body:
+                if (
+                    isinstance(statement, ast.Assign)
+                    and any(isinstance(target, ast.Name) and target.id == "tests" for target in statement.targets)
+                    and isinstance(statement.value, (ast.List, ast.Tuple))
+                ):
+                    return {
+                        element.id for element in statement.value.elts if isinstance(element, ast.Name)
+                    }
+    return set()
 
 
 def test_auth_handler_has_no_stray_non_code_suffix():
@@ -440,6 +458,78 @@ def test_vote_ids_are_validated_before_database_writes():
         "int(_suggestion_id)" not in source,
         "vote handlers must not re-cast validated suggestion ids",
     )
+
+
+def test_vote_suggestions_are_bound_to_events_before_writes():
+    base_source = BASE.read_text()
+    votes_source = VOTES.read_text()
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+
+    assert_true(
+        "def require_event_suggestion(self, suggestion_id, event_id):" in base_source,
+        "BaseHandler must expose a shared suggestion/event binding guard",
+    )
+    assert_true(
+        '"SELECT id FROM willbeout_suggest WHERE id = %s AND event_id = %s"' in base_source
+        and "            suggestion_id,\n            event_id,\n" in base_source,
+        "suggestion binding must query the exact suggestion and event IDs",
+    )
+    assert_true(
+        "if not suggestion:" in base_source and "raise tornado.web.HTTPError(404)" in base_source,
+        "missing or cross-event suggestions must fail closed with 404",
+    )
+    assert_true(
+        votes_source.count("self.require_event_suggestion(_suggestion_id, _event_id)") == 2,
+        "both vote mutation handlers must bind the suggestion to the authorized event",
+    )
+    events_source = EVENTS.read_text()
+    assert_true(
+        "a.id = b.suggestion_id AND a.event_id = b.event_id" in events_source,
+        "event vote totals must join votes by both suggestion and event ID",
+    )
+    for class_name, end_name in (
+        ("VoteHandler", "ChangeVoteHandler"),
+        ("ChangeVoteHandler", None),
+    ):
+        handler = votes_source.split("class {0}".format(class_name), 1)[1]
+        if end_name:
+            handler = handler.split("class {0}".format(end_name), 1)[0]
+        access = handler.index("await self.require_event_access(_event_id)")
+        binding = handler.index("self.require_event_suggestion(_suggestion_id, _event_id)")
+        write_candidates = [
+            position for position in (
+                handler.find("self.db.execute_rowcount("),
+                handler.find("self.db.execute("),
+            ) if position >= 0
+        ]
+        assert_true(
+            access < binding < min(write_candidates),
+            "{0} must bind the suggestion after event access and before vote storage".format(class_name),
+        )
+    for test_name in (
+        "test_vote_mutations_reject_suggestion_outside_authorized_event",
+        "test_vote_mutations_accept_suggestion_bound_to_authorized_event",
+    ):
+        assert_true(test_name in runtime_tests, "runtime coverage is missing {0}".format(test_name))
+    assert_true(
+        'self.assertIn("a.event_id = b.event_id", suggestion_statement)' in runtime_tests,
+        "runtime event-page coverage must enforce event-scoped vote aggregation",
+    )
+    assert_true(
+        "test_vote_suggestions_are_bound_to_events_before_writes" in registered_contract_tests(),
+        "vote suggestion binding contract must remain registered",
+    )
+    documentation = {
+        "README.md": "Votes require the suggestion to belong to the authorized event",
+        "SECURITY.md": "Vote mutations also require an exact suggestion and event match",
+        "VISION.md": "Bind vote suggestions to the authorized event before storage",
+        "CHANGES.md": "Blocked cross-event vote creation and deletion",
+    }
+    for relative_path, phrase in documentation.items():
+        assert_true(
+            phrase in (ROOT / relative_path).read_text(),
+            "{0} must document vote suggestion event binding".format(relative_path),
+        )
 
 
 def test_attendee_event_ids_are_validated_before_database_access():
@@ -821,6 +911,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(COOKIE_MAX_AGE_PLAN, "signed cookie max-age enforcement")
     assert_completed_plan(MAKE_ROOT_PROTECTION_PLAN, "Make root override protection")
     assert_completed_plan(EVENT_VOTE_USER_PLAN, "event vote user binding")
+    assert_completed_plan(VOTE_SUGGESTION_BINDING_PLAN, "vote suggestion event binding")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -840,6 +931,7 @@ def main():
         test_all_event_scoped_endpoints_require_shared_access,
         test_event_ids_are_validated_before_database_queries,
         test_vote_ids_are_validated_before_database_writes,
+        test_vote_suggestions_are_bound_to_events_before_writes,
         test_attendee_event_ids_are_validated_before_database_access,
         test_availability_event_ids_are_validated_before_database_access,
         test_message_ids_are_validated_before_database_access,

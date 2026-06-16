@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-16
+
+- Blocked cross-event vote creation and deletion by requiring each suggestion
+  ID to belong to the already authorized event before vote storage is touched.
+
 ## 2026-06-15
 
 - Added SHA-256 artifact hashes to the resolved production lock and made

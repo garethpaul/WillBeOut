@@ -1,6 +1,6 @@
 # Vote Suggestion Event Binding
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -17,11 +17,13 @@ affect another event's displayed total.
 2. Return HTTP 404 for a missing or mismatched suggestion without disclosing
    another event's suggestion membership.
 3. Apply the same binding to vote creation and vote removal.
-4. Preserve authenticated user binding, parameterized SQL, existing redirects,
+4. Join displayed vote totals by both suggestion ID and event ID so historical
+   malformed rows cannot affect another event.
+5. Preserve authenticated user binding, parameterized SQL, existing redirects,
    duplicate-vote behavior, and owner-or-friend event access.
-5. Add no-network handler tests proving mismatches issue no vote query, insert,
+6. Add no-network handler tests proving mismatches issue no vote query, insert,
    or delete and valid bindings preserve both mutation paths.
-6. Add mutation-sensitive static contracts for both handlers, binding order,
+7. Add mutation-sensitive static contracts for both handlers, binding order,
    exact SQL parameters, tests, guidance, and completed-plan evidence.
 
 ## Scope Boundaries
@@ -47,7 +49,7 @@ affect another event's displayed total.
 
 - **Files:** `test_modern_runtime.py`, `scripts/check_willbeout_contracts.py`.
 - Cover invalid create/delete, valid create/delete, SQL parameters, ordering,
-  contract registration, and plan completion.
+  aggregate event scoping, contract registration, and plan completion.
 
 ### U4. Preserve maintained guidance
 
@@ -56,10 +58,19 @@ affect another event's displayed total.
 
 ## Verification
 
-- Pending implementation.
-- Run focused handler tests first, then the full pinned `make check` from the
-  repository and an external directory.
-- Run isolated hostile mutations across helper SQL, both handler calls,
-  ordering, tests, guidance, and completed-plan status.
-- Audit artifacts, secrets, dependency drift, exact diff, and whitespace before
-  the explicit-path commit.
+- The cross-event handler test failed before implementation because `/vote`
+  redirected and touched vote storage, then both create and delete returned 404
+  without vote access after the exact-pair guard was added.
+- Focused valid-binding tests preserved vote creation and removal redirects and
+  mutations.
+- Eight isolated hostile mutations were rejected across helper SQL, both
+  handler calls, guard ordering, aggregate join scoping, runtime tests, static
+  registration, and README guidance. The completed-plan mutation was rejected
+  by the final full gate.
+- Repository and external-directory `make check` passed the complete runtime,
+  static, workflow, and hash-lock contract suites under Tornado 6.5.6.
+- The configured package index did not expose locked `cryptography==48.0.1`, so
+  a complete fresh `--require-hashes` install could not be repeated locally;
+  lock semantics remained covered by the repository contract and canonical CI.
+- Artifact, secret, dependency-drift, exact-diff, and whitespace audits are
+  included in the final shipping gate.

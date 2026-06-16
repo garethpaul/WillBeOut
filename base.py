@@ -80,3 +80,13 @@ class BaseHandler(tornado.web.RequestHandler):
         if not self.friendship_visible(streams, owner_id):
             raise tornado.web.HTTPError(403)
         return event
+
+    def require_event_suggestion(self, suggestion_id, event_id):
+        suggestion = self.db.get(
+            "SELECT id FROM willbeout_suggest WHERE id = %s AND event_id = %s",
+            suggestion_id,
+            event_id,
+        )
+        if not suggestion:
+            raise tornado.web.HTTPError(404)
+        return suggestion
