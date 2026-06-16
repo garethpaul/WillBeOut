@@ -117,6 +117,7 @@ isolated credentialed smoke test.
   enforce the same owner-or-friend decision before protected reads or writes.
 - Votes require the suggestion to belong to the authorized event before any
   duplicate check, insertion, or deletion.
+- Availability replacements validate every submitted time before deleting saved values.
 - PyMySQL operations keep SQL and parameters separate, roll back failed writes,
   and close every connection.
 - Tornado XSRF checks protect writes, and state changes remain POST-only.

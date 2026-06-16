@@ -2,6 +2,7 @@
 
 ## 2026-06-16
 
+- Validated complete availability payloads before deleting or inserting saved times.
 - Updated the hash-locked Tornado runtime from 6.5.6 to 6.5.7 to remediate
   GHSA-pw6j-qg29-8w7f while preserving the reviewed resolved graph.
 - Blocked cross-event vote creation and deletion by requiring each suggestion

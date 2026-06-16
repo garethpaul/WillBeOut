@@ -1,6 +1,6 @@
 # Availability Payload Validation
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -59,7 +59,21 @@ valid state and leave a partial replacement.
 
 ## Verification
 
-- Pending focused pre-fix reproduction and runtime tests.
-- Pending repository and external-directory full gates.
-- Pending isolated hostile mutations and exact diff, artifact, and secret
-  audits.
+- Restoring the original delete-before-parse sequence made the malformed
+  payload regression fail because database writes occurred before the later
+  token raised an error.
+- The two focused handler tests passed: malformed and empty payloads returned
+  HTTP 400 without writes, while `2,2,5` preserved duplicate values and issued
+  the expected ordered replacement.
+- All 26 no-network runtime tests passed under the exact supported dependency
+  environment.
+- Eight isolated hostile mutations were rejected across empty-token handling,
+  integer conversion, parser invocation, runtime coverage, static registration,
+  guidance, completed-plan status, and the original delete-before-parse flow.
+- Repository and external-directory `make check` each passed 25 static
+  contracts, 26 runtime tests, 21 workflow mutations, and 23 dependency-lock
+  mutations under the supported exact dependency environment.
+- Plan-aware correctness, security, testing, maintainability, and project
+  standards review found no actionable issue.
+- Exact eight-path diff, generated-artifact, secret-pattern, untracked-file,
+  and whitespace audits passed before commit.

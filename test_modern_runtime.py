@@ -395,6 +395,47 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
         self.assertEqual(302, response.code)
         self.assertEqual(1, len(self.database.execute_calls))
 
+    def test_availability_rejects_malformed_payload_before_mutation(self):
+        self.database.event = {"id": 1, "userid": "42"}
+
+        for available_times in ("1,invalid", "1,,2", ""):
+            self.database.reset_protected_calls()
+            response = self.fetch(
+                "/time",
+                method="POST",
+                body=urlencode({"event_id": 1, "availabletimes": available_times}),
+                headers=self._auth_headers(),
+                follow_redirects=False,
+            )
+
+            self.assertEqual(400, response.code, available_times)
+            self.assertEqual([], self.database.execute_calls, available_times)
+
+    def test_availability_validates_all_times_before_ordered_replacement(self):
+        self.database.event = {"id": 1, "userid": "42"}
+
+        response = self.fetch(
+            "/time",
+            method="POST",
+            body=urlencode({"event_id": 1, "availabletimes": "2,2,5"}),
+            headers=self._auth_headers(),
+            follow_redirects=False,
+        )
+
+        self.assertEqual(302, response.code)
+        self.assertEqual(4, len(self.database.execute_calls))
+        delete_statement, delete_parameters = self.database.execute_calls[0]
+        self.assertIn("DELETE FROM willbeout_availability", delete_statement)
+        self.assertEqual((1, 42), delete_parameters)
+        self.assertEqual(
+            [
+                (42, "Ada", 2, 1),
+                (42, "Ada", 2, 1),
+                (42, "Ada", 5, 1),
+            ],
+            [parameters for _statement, parameters in self.database.execute_calls[1:]],
+        )
+
     def test_missing_event_is_not_disclosed_as_forbidden(self):
         self.database.event = None
         response = self.fetch(

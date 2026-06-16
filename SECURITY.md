@@ -52,6 +52,7 @@ Helpful reports include:
   markup may use explicit raw rendering.
 - Request IDs for event, vote, attendee, availability, and message handlers
   should be validated before database access or redirects.
+- Availability replacements validate the complete payload before the first database mutation.
 - Active template-side external integrations should use HTTPS to avoid mixed
   content and request tampering.
 - Post-login redirects are restricted to the literal `/` and `/events`

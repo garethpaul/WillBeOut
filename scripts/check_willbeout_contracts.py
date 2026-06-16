@@ -36,6 +36,7 @@ EVENT_VOTE_USER_PLAN = ROOT / "docs" / "plans" / "2026-06-14-event-vote-user-bin
 HASH_VERIFIED_LOCK_PLAN = ROOT / "docs" / "plans" / "2026-06-15-hash-verified-production-lock.md"
 VOTE_SUGGESTION_BINDING_PLAN = ROOT / "docs" / "plans" / "2026-06-16-vote-suggestion-event-binding.md"
 TORNADO_SECURITY_UPDATE_PLAN = ROOT / "docs" / "plans" / "2026-06-16-tornado-6.5.7-security-update.md"
+AVAILABILITY_PAYLOAD_PLAN = ROOT / "docs" / "plans" / "2026-06-16-availability-payload-validation.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -580,6 +581,65 @@ def test_availability_event_ids_are_validated_before_database_access():
     )
 
 
+def test_availability_payload_is_validated_before_mutation():
+    source = EVENTS.read_text()
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+    time_handler_source = source[source.index("class TimeHandler"):]
+
+    assert_true(
+        "def parse_available_times(value):" in time_handler_source,
+        "availability handler must expose complete-payload parsing",
+    )
+    assert_true(
+        "tokens = unquote(value).split(',')" in time_handler_source,
+        "availability parsing must decode and split the complete payload",
+    )
+    assert_true(
+        "if any(not token for token in tokens):" in time_handler_source,
+        "availability parsing must reject empty tokens",
+    )
+    assert_true(
+        "return [int(token) for token in tokens]" in time_handler_source,
+        "availability parsing must convert every token before returning",
+    )
+    assert_true(
+        "except (TypeError, ValueError):" in time_handler_source
+        and "raise tornado.web.HTTPError(400)" in time_handler_source,
+        "malformed availability payloads must fail with HTTP 400",
+    )
+    parse_call = time_handler_source.index(
+        "_times = self.parse_available_times(self.get_argument('availabletimes'))"
+    )
+    delete_call = time_handler_source.index(
+        'self.db.execute(\n            "DELETE FROM willbeout_availability'
+    )
+    insert_loop = time_handler_source.index("for i in _times:")
+    assert_true(
+        parse_call < delete_call < insert_loop,
+        "all availability tokens must be valid before replacement starts",
+    )
+    for test_name in (
+        "test_availability_rejects_malformed_payload_before_mutation",
+        "test_availability_validates_all_times_before_ordered_replacement",
+    ):
+        assert_true(test_name in runtime_tests, "runtime coverage is missing {0}".format(test_name))
+    assert_true(
+        "test_availability_payload_is_validated_before_mutation" in registered_contract_tests(),
+        "availability payload contract must remain registered",
+    )
+    documentation = {
+        "README.md": "Availability replacements validate every submitted time before deleting saved values",
+        "SECURITY.md": "Availability replacements validate the complete payload before the first database mutation",
+        "VISION.md": "Validate complete availability payloads before replacing saved values",
+        "CHANGES.md": "Validated complete availability payloads before deleting or inserting saved times",
+    }
+    for relative_path, phrase in documentation.items():
+        assert_true(
+            phrase in (ROOT / relative_path).read_text(),
+            "{0} must document availability payload validation".format(relative_path),
+        )
+
+
 def test_message_ids_are_validated_before_database_access():
     source = MESSAGES.read_text()
 
@@ -914,6 +974,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(EVENT_VOTE_USER_PLAN, "event vote user binding")
     assert_completed_plan(VOTE_SUGGESTION_BINDING_PLAN, "vote suggestion event binding")
     assert_completed_plan(TORNADO_SECURITY_UPDATE_PLAN, "Tornado 6.5.7 security update")
+    assert_completed_plan(AVAILABILITY_PAYLOAD_PLAN, "availability payload validation")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -936,6 +997,7 @@ def main():
         test_vote_suggestions_are_bound_to_events_before_writes,
         test_attendee_event_ids_are_validated_before_database_access,
         test_availability_event_ids_are_validated_before_database_access,
+        test_availability_payload_is_validated_before_mutation,
         test_message_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_generated_macos_metadata_is_not_committed,
