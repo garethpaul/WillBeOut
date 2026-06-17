@@ -53,6 +53,8 @@ Helpful reports include:
 - Request IDs for event, vote, attendee, availability, and message handlers
   should be validated before database access or redirects.
 - Availability replacements validate the complete payload before the first database mutation.
+- Availability replacement verifies InnoDB before DELETE and rolls back the
+  complete replacement when any ordered statement fails.
 - Active template-side external integrations should use HTTPS to avoid mixed
   content and request tampering.
 - Post-login redirects are restricted to the literal `/` and `/events`

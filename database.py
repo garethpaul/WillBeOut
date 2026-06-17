@@ -1,7 +1,13 @@
 import pymysql
 
 
+class TransactionUnavailableError(RuntimeError):
+    pass
+
+
 class Database:
+    TRANSACTIONAL_ENGINES = frozenset(("INNODB",))
+
     def __init__(self, host, database, user, password, connect=None):
         self._settings = {
             "host": host,
@@ -46,3 +52,33 @@ class Database:
 
     def execute_lastrowid(self, statement, *parameters):
         return self._execute(statement, parameters, "lastrowid")
+
+    def execute_transaction(self, table_name, statements):
+        connection = self._connect(**self._settings)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """SELECT ENGINE FROM information_schema.TABLES
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s""",
+                    (table_name,),
+                )
+                table = cursor.fetchone()
+                engine = table.get("ENGINE") if isinstance(table, dict) else None
+                if not engine or str(engine).upper() not in self.TRANSACTIONAL_ENGINES:
+                    raise TransactionUnavailableError(
+                        "Availability storage does not support transactions"
+                    )
+                for statement, parameters in statements:
+                    cursor.execute(statement, parameters)
+                connection.commit()
+        except Exception:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+            try:
+                connection.close()
+            except Exception:
+                pass
+            raise
+        connection.close()

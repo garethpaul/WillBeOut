@@ -37,6 +37,7 @@ HASH_VERIFIED_LOCK_PLAN = ROOT / "docs" / "plans" / "2026-06-15-hash-verified-pr
 VOTE_SUGGESTION_BINDING_PLAN = ROOT / "docs" / "plans" / "2026-06-16-vote-suggestion-event-binding.md"
 TORNADO_SECURITY_UPDATE_PLAN = ROOT / "docs" / "plans" / "2026-06-16-tornado-6.5.7-security-update.md"
 AVAILABILITY_PAYLOAD_PLAN = ROOT / "docs" / "plans" / "2026-06-16-availability-payload-validation.md"
+AVAILABILITY_TRANSACTION_PLAN = ROOT / "docs" / "plans" / "2026-06-17-availability-replacement-transaction.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -610,12 +611,11 @@ def test_availability_payload_is_validated_before_mutation():
     parse_call = time_handler_source.index(
         "_times = self.parse_available_times(self.get_argument('availabletimes'))"
     )
-    delete_call = time_handler_source.index(
-        'self.db.execute(\n            "DELETE FROM willbeout_availability'
+    transaction_call = time_handler_source.index(
+        'self.db.execute_transaction("willbeout_availability", statements)'
     )
-    insert_loop = time_handler_source.index("for i in _times:")
     assert_true(
-        parse_call < delete_call < insert_loop,
+        parse_call < transaction_call,
         "all availability tokens must be valid before replacement starts",
     )
     for test_name in (
@@ -637,6 +637,86 @@ def test_availability_payload_is_validated_before_mutation():
         assert_true(
             phrase in (ROOT / relative_path).read_text(),
             "{0} must document availability payload validation".format(relative_path),
+        )
+
+
+def test_availability_replacement_uses_one_transaction():
+    database_source = DATABASE.read_text()
+    events_source = EVENTS.read_text()
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+    time_handler_source = events_source[events_source.index("class TimeHandler"):]
+
+    transaction_method = database_source[database_source.index("def execute_transaction"):]
+    metadata_check = transaction_method.index("information_schema.TABLES")
+    statement_loop = transaction_method.index("for statement, parameters in statements:")
+    commit_call = transaction_method.index("connection.commit()")
+    assert_true(
+        metadata_check < statement_loop < commit_call,
+        "transaction engine validation must precede writes and one final commit",
+    )
+    assert_true(
+        'TRANSACTIONAL_ENGINES = frozenset(("INNODB",))' in database_source,
+        "availability writes must require an explicit transactional engine allowlist",
+    )
+    assert_true(
+        'table.get("ENGINE")' in transaction_method
+        and "raise TransactionUnavailableError" in transaction_method,
+        "missing or unsupported table engines must fail closed",
+    )
+    assert_true(
+        "connection.rollback()" in transaction_method
+        and "connection.close()" in transaction_method,
+        "transaction failures must roll back and every connection must close",
+    )
+    failure_block = transaction_method[transaction_method.index("except Exception:"):]
+    rollback_call = failure_block.index("connection.rollback()")
+    failure_close = failure_block.index("connection.close()")
+    original_raise = failure_block.index("\n            raise\n")
+    success_close = failure_block.rindex("connection.close()")
+    assert_true(
+        rollback_call < failure_close < original_raise < success_close,
+        "transaction cleanup must preserve the original failure before the success close",
+    )
+    assert_true(
+        transaction_method.count("connection.close()") == 2,
+        "transaction connections must close on both failure and success",
+    )
+    transaction_call = time_handler_source.index(
+        'self.db.execute_transaction("willbeout_availability", statements)'
+    )
+    delete_statement = time_handler_source.index("DELETE FROM willbeout_availability")
+    insert_statement = time_handler_source.index("INSERT INTO willbeout_availability")
+    assert_true(
+        delete_statement < insert_statement < transaction_call,
+        "availability replacement must submit one ordered DELETE/INSERT transaction",
+    )
+    assert_true(
+        "self.db.execute(" not in time_handler_source[:time_handler_source.index("async def get(self):")],
+        "availability replacement must not retain independently committed writes",
+    )
+    for test_name in (
+        "test_database_commits_ordered_transaction_on_supported_engine",
+        "test_database_rejects_nontransactional_engine_before_writes",
+        "test_database_rejects_missing_transaction_table_before_writes",
+        "test_database_rolls_back_failed_transaction_without_later_writes",
+        "test_database_preserves_transaction_error_when_cleanup_fails",
+        "test_availability_validates_all_times_before_ordered_replacement",
+    ):
+        assert_true(test_name in runtime_tests, "runtime coverage is missing {0}".format(test_name))
+    assert_true(
+        "test_availability_replacement_uses_one_transaction" in registered_contract_tests(),
+        "availability transaction contract must remain registered",
+    )
+    documentation = {
+        "README.md": "Availability replacement uses one verified InnoDB transaction",
+        "SECURITY.md": "Availability replacement verifies InnoDB before DELETE",
+        "VISION.md": "Replace availability atomically on a verified transactional table",
+        "CHANGES.md": "Made availability replacement atomic on verified InnoDB storage",
+    }
+    for relative_path, phrase in documentation.items():
+        assert_true(
+            phrase in (ROOT / relative_path).read_text(),
+            "{0} must document atomic availability replacement".format(relative_path),
         )
 
 
@@ -975,6 +1055,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(VOTE_SUGGESTION_BINDING_PLAN, "vote suggestion event binding")
     assert_completed_plan(TORNADO_SECURITY_UPDATE_PLAN, "Tornado 6.5.7 security update")
     assert_completed_plan(AVAILABILITY_PAYLOAD_PLAN, "availability payload validation")
+    assert_completed_plan(AVAILABILITY_TRANSACTION_PLAN, "availability replacement transaction")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -998,6 +1079,7 @@ def main():
         test_attendee_event_ids_are_validated_before_database_access,
         test_availability_event_ids_are_validated_before_database_access,
         test_availability_payload_is_validated_before_mutation,
+        test_availability_replacement_uses_one_transaction,
         test_message_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_generated_macos_metadata_is_not_committed,

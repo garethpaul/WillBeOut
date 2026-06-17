@@ -21,12 +21,21 @@ from session import SessionCipher
 
 
 class FakeCursor:
-    def __init__(self, rows=None, row=None, rowcount=1, lastrowid=7, error=None):
+    def __init__(
+        self,
+        rows=None,
+        row=None,
+        rowcount=1,
+        lastrowid=7,
+        error=None,
+        error_at=None,
+    ):
         self.rows = rows or []
         self.row = row
         self.rowcount = rowcount
         self.lastrowid = lastrowid
         self.error = error
+        self.error_at = error_at
         self.executions = []
 
     def __enter__(self):
@@ -37,7 +46,7 @@ class FakeCursor:
 
     def execute(self, statement, parameters):
         self.executions.append((statement, parameters))
-        if self.error:
+        if self.error and (self.error_at is None or len(self.executions) == self.error_at):
             raise self.error
         return self.rowcount
 
@@ -49,8 +58,10 @@ class FakeCursor:
 
 
 class FakeConnection:
-    def __init__(self, cursor):
+    def __init__(self, cursor, rollback_error=None, close_error=None):
         self._cursor = cursor
+        self.rollback_error = rollback_error
+        self.close_error = close_error
         self.commits = 0
         self.rollbacks = 0
         self.closes = 0
@@ -63,9 +74,13 @@ class FakeConnection:
 
     def rollback(self):
         self.rollbacks += 1
+        if self.rollback_error:
+            raise self.rollback_error
 
     def close(self):
         self.closes += 1
+        if self.close_error:
+            raise self.close_error
 
 
 class FakeHTTPClient:
@@ -110,11 +125,13 @@ class FakeEventDatabase:
         self.get_calls = []
         self.query_calls = []
         self.execute_calls = []
+        self.transaction_calls = []
         self.rowcount_calls = []
 
     def reset_protected_calls(self):
         self.query_calls = []
         self.execute_calls = []
+        self.transaction_calls = []
         self.rowcount_calls = []
 
     def get(self, statement, *parameters):
@@ -135,6 +152,9 @@ class FakeEventDatabase:
         self.rowcount_calls.append((statement, parameters))
         return 0
 
+    def execute_transaction(self, table_name, statements):
+        self.transaction_calls.append((table_name, list(statements)))
+
 
 class ModernRuntimeTest(unittest.IsolatedAsyncioTestCase):
     def test_database_parameterizes_and_closes_queries(self):
@@ -154,6 +174,97 @@ class ModernRuntimeTest(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaisesRegex(RuntimeError, "database failed"):
             db.execute("DELETE FROM events WHERE id = %s", 1)
+        self.assertEqual(1, connection.rollbacks)
+        self.assertEqual(1, connection.closes)
+
+    def test_database_commits_ordered_transaction_on_supported_engine(self):
+        cursor = FakeCursor(row={"ENGINE": "InnoDB"})
+        connection = FakeConnection(cursor)
+        db = database.Database("db", "app", "user", "secret", connect=lambda **_options: connection)
+        statements = [
+            ("DELETE FROM availability WHERE event_id = %s", (1,)),
+            ("INSERT INTO availability (event_id, time) VALUES (%s, %s)", (1, 2)),
+        ]
+
+        db.execute_transaction("willbeout_availability", statements)
+
+        metadata_statement, metadata_parameters = cursor.executions[0]
+        self.assertIn("information_schema.TABLES", metadata_statement)
+        self.assertEqual(("willbeout_availability",), metadata_parameters)
+        self.assertEqual(statements, cursor.executions[1:])
+        self.assertEqual(1, connection.commits)
+        self.assertEqual(0, connection.rollbacks)
+        self.assertEqual(1, connection.closes)
+
+    def test_database_rejects_nontransactional_engine_before_writes(self):
+        cursor = FakeCursor(row={"ENGINE": "MyISAM"})
+        connection = FakeConnection(cursor)
+        db = database.Database("db", "app", "user", "secret", connect=lambda **_options: connection)
+
+        with self.assertRaises(database.TransactionUnavailableError):
+            db.execute_transaction(
+                "willbeout_availability",
+                [("DELETE FROM availability WHERE event_id = %s", (1,))],
+            )
+
+        self.assertEqual(1, len(cursor.executions))
+        self.assertEqual(0, connection.commits)
+        self.assertEqual(1, connection.rollbacks)
+        self.assertEqual(1, connection.closes)
+
+    def test_database_rejects_missing_transaction_table_before_writes(self):
+        cursor = FakeCursor(row=None)
+        connection = FakeConnection(cursor)
+        db = database.Database("db", "app", "user", "secret", connect=lambda **_options: connection)
+
+        with self.assertRaises(database.TransactionUnavailableError):
+            db.execute_transaction(
+                "willbeout_availability",
+                [("DELETE FROM availability WHERE event_id = %s", (1,))],
+            )
+
+        self.assertEqual(1, len(cursor.executions))
+        self.assertEqual(0, connection.commits)
+        self.assertEqual(1, connection.rollbacks)
+        self.assertEqual(1, connection.closes)
+
+    def test_database_rolls_back_failed_transaction_without_later_writes(self):
+        failure = RuntimeError("insert failed")
+        cursor = FakeCursor(row={"ENGINE": "InnoDB"}, error=failure, error_at=3)
+        connection = FakeConnection(cursor)
+        db = database.Database("db", "app", "user", "secret", connect=lambda **_options: connection)
+        statements = [
+            ("DELETE FROM availability WHERE event_id = %s", (1,)),
+            ("INSERT INTO availability (event_id, time) VALUES (%s, %s)", (1, 2)),
+            ("INSERT INTO availability (event_id, time) VALUES (%s, %s)", (1, 5)),
+        ]
+
+        with self.assertRaises(RuntimeError) as error:
+            db.execute_transaction("willbeout_availability", statements)
+
+        self.assertIs(failure, error.exception)
+        self.assertEqual(3, len(cursor.executions))
+        self.assertEqual(0, connection.commits)
+        self.assertEqual(1, connection.rollbacks)
+        self.assertEqual(1, connection.closes)
+
+    def test_database_preserves_transaction_error_when_cleanup_fails(self):
+        failure = RuntimeError("insert failed")
+        cursor = FakeCursor(row={"ENGINE": "InnoDB"}, error=failure, error_at=2)
+        connection = FakeConnection(
+            cursor,
+            rollback_error=RuntimeError("rollback failed"),
+            close_error=RuntimeError("close failed"),
+        )
+        db = database.Database("db", "app", "user", "secret", connect=lambda **_options: connection)
+
+        with self.assertRaises(RuntimeError) as error:
+            db.execute_transaction(
+                "willbeout_availability",
+                [("DELETE FROM availability WHERE event_id = %s", (1,))],
+            )
+
+        self.assertIs(failure, error.exception)
         self.assertEqual(1, connection.rollbacks)
         self.assertEqual(1, connection.closes)
 
@@ -410,6 +521,7 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
 
             self.assertEqual(400, response.code, available_times)
             self.assertEqual([], self.database.execute_calls, available_times)
+            self.assertEqual([], self.database.transaction_calls, available_times)
 
     def test_availability_validates_all_times_before_ordered_replacement(self):
         self.database.event = {"id": 1, "userid": "42"}
@@ -423,8 +535,12 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
         )
 
         self.assertEqual(302, response.code)
-        self.assertEqual(4, len(self.database.execute_calls))
-        delete_statement, delete_parameters = self.database.execute_calls[0]
+        self.assertEqual([], self.database.execute_calls)
+        self.assertEqual(1, len(self.database.transaction_calls))
+        table_name, statements = self.database.transaction_calls[0]
+        self.assertEqual("willbeout_availability", table_name)
+        self.assertEqual(4, len(statements))
+        delete_statement, delete_parameters = statements[0]
         self.assertIn("DELETE FROM willbeout_availability", delete_statement)
         self.assertEqual((1, 42), delete_parameters)
         self.assertEqual(
@@ -433,7 +549,7 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
                 (42, "Ada", 2, 1),
                 (42, "Ada", 5, 1),
             ],
-            [parameters for _statement, parameters in self.database.execute_calls[1:]],
+            [parameters for _statement, parameters in statements[1:]],
         )
 
     def test_missing_event_is_not_disclosed_as_forbidden(self):

@@ -36,6 +36,7 @@ Priority:
 - Validate attendee event ids before reading or writing attendance data
 - Validate availability event ids before reading or writing availability data
 - Validate complete availability payloads before replacing saved values
+- Replace availability atomically on a verified transactional table
 - Validate message event and delete ids before reading or writing message data
 - Keep generated desktop metadata out of source control
 - Keep active template-side external integrations on HTTPS

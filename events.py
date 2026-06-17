@@ -64,14 +64,15 @@ class TimeHandler(base.BaseHandler):
         _event_id = self.get_int_argument('event_id')
         await self.require_event_access(_event_id)
         _times = self.parse_available_times(self.get_argument('availabletimes'))
-        self.db.execute(
+        statements = [(
             "DELETE FROM willbeout_availability WHERE event_id = %s and user_id = %s",
-            _event_id, int(_user_id))
-
-        for i in _times:
-            self.db.execute(
-                """INSERT INTO willbeout_availability (user_id, user_name, time, event_id) VALUES (%s, %s, %s, %s)""",
-                int(_user_id), _user_name, i, _event_id)
+            (_event_id, int(_user_id)),
+        )]
+        statements.extend((
+            """INSERT INTO willbeout_availability (user_id, user_name, time, event_id) VALUES (%s, %s, %s, %s)""",
+            (int(_user_id), _user_name, i, _event_id),
+        ) for i in _times)
+        self.db.execute_transaction("willbeout_availability", statements)
         self.redirect('/event?event_id=' + str(_event_id))
 
     @tornado.web.authenticated
