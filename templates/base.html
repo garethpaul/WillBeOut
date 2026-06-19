@@ -5,7 +5,7 @@
     <title>WillBeOut</title>
     <link rel="stylesheet" href="{{ static_url("css/bootstrap.css") }}" type="text/css"/>
 	<link rel="stylesheet" href="{{ static_url("css/style.css") }}" type="text/css"/>
-	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" integrity="sha384-SDFvKZaD/OapoAVqhWJM8vThqq+NQWczamziIoxiMYVNrVeUUrf2zhbsFvuHOrAh" crossorigin="anonymous"></script>
 	<script type="text/javascript" src="{{ static_url("js/bootstrap.js") }}"></script>
 	<script type="text/javascript" src="{{ static_url("js/bootstrap-datepicker.js") }}"></script>
 	<script type="text/javascript" src="{{ static_url("js/bootstrap-calendar.js") }}"></script>
@@ -47,7 +47,7 @@
 	            </ul>
 		  <span class='pull-right' style='margin-top:4px; border:1px solid white; position:relative; z-index:9999'>
 			<span class='popover-bottom' data-trigger='click' data-placement="bottom" rel="popover" 
-			data-content="<a class='btn-auth btn-facebook' href='{{ escape(current_user['link'])}}'>Facebook Profile</span>" 
+			data-content="<a class='btn-auth btn-facebook' href='https://www.facebook.com/{{ escape(current_user['id']) }}'>Facebook Profile</a>"
 			data-original-title="{{ escape(current_user['name']) }}">
 			<img src='https://graph.facebook.com/{{ escape(current_user['id']) }}/picture?type=large' />
 			</span>
@@ -68,6 +68,5 @@
 <script type="text/javascript">
 FB.init({appId: "462064377147228", status: true, cookie: true});
 </script>		
-<script type="text/javascript" src="{{ static_url("js/feeds.js")}}"></script>	
   </body>
 </html>

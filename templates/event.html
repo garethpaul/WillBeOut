@@ -4,7 +4,7 @@
 <header class="jumbotron subhead" id="overview">
   <div class="container">
     <h1>Events</h1>
-	<p class='lead'>{{ event['place'] }} | {{ event['f'] }} to {{ event['t'] }}  <a class="btn-auth btn-facebook" href="#" onclick='postToFeed("https://willbeout.com/event?id={{ event.id }}", "{{ event.place }}", "{{ event.id }}", "{{ event.f }}", "{{ event.t }}");'>Share Event</a></p>
+		<p class='lead'>{{ event['place'] }} | {{ event['f'] }} to {{ event['t'] }}  <a class="btn-auth btn-facebook share-event" href="#" data-link="https://willbeout.com/event?event_id={{ event['id'] }}" data-place="{{ event['place'] }}" data-id="{{ event['id'] }}" data-from="{{ event['f'] }}" data-to="{{ event['t'] }}">Share Event</a></p>
   </div>
 </header>
 <div class='container'>
@@ -20,7 +20,7 @@
 				  <span href="#">Voted By Event Owner</span>
 				</div>
 				-->
-				<p class='name'><a target='_blank' href='{{i.url}}'>{{ i.name }}</a></p>
+					<p class='name'><a target='_blank' rel='noopener noreferrer' href='{{i.url}}'>{{ i.name }}</a></p>
 				<p class='address'>{{ i.address}}</p>
 				<p class='city'>{{ i.city }}</p>
 				<p class='city'>Provider: {{ i.user_name }}</p>
@@ -221,17 +221,18 @@ $('.msglist').on('click', '.delete', function() {
 		$(this).addClass('timeselect');
 		$(this).attr('data-on', 'true');
 		at.push($(this).attr('data-id'));
-		at.sort();
-		$('#availabletimes').val(escape(at));
+		at.sort(function(a, b) { return Number(a) - Number(b); });
+		$('#availabletimes').val(at.join(','));
 	},function(){
 		$(this).removeClass('timeselect');
 		var _id = $(this).attr('data-id');
-		at.splice(at.indexOf(_id));
+		at.splice(at.indexOf(_id), 1);
+		$('#availabletimes').val(at.join(','));
 	});
 	</script>
 	
 	
-{{ x }}
+{% raw x %}
   </div>
   <div class="modal-footer">
     <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
@@ -258,7 +259,7 @@ $('#newtime').submit(function(){
 	  <textarea name='msg' rows="9"></textarea>
  	<input type='hidden' name='type' value='message' />
 	<input type='hidden' name='id' value='{{ event['id'] }}' />
-{{ x }}
+{% raw x %}
   </div>
   <div class="modal-footer">
     <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>

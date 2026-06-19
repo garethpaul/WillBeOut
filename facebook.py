@@ -1,19 +1,16 @@
 #!/usr/bin/env python
 import os.path
-import tornado.auth
-import tornado.escape
 import tornado.httpserver
 import tornado.ioloop
 import tornado.options
 import tornado.web
-import tornado.database
-from base import *
-import json
-import urllib
-from cgi import escape
+from base import BaseHandler
+from tornado.log import access_log
 from tornado.options import define, options
-from prettydate import pdate
-import time
+from urllib.parse import urlsplit
+from database import Database
+from facebook_client import FacebookClient
+from session import SessionCipher
 
 #modules
 import auth
@@ -28,19 +25,53 @@ import attendees
 define("port", default=os.environ.get(
     "PORT", 5000), help="run on the given port", type=int)
 define("facebook_api_key", help="your Facebook API key",
-       default="")
+       default=os.environ.get("FACEBOOK_API_KEY", ""))
 define("facebook_secret", help="your Facebook application secret",
-       default="")
+       default=os.environ.get("FACEBOOK_SECRET", ""))
+define("facebook_graph_version", default=os.environ.get("FACEBOOK_GRAPH_VERSION", "v24.0"))
+define("facebook_redirect_uri", default=os.environ.get("FACEBOOK_REDIRECT_URI", ""))
 define("cookie_secret", help="Tornado secure-cookie signing secret",
        default=os.environ.get("COOKIE_SECRET", ""))
-define('mysql_host', default='')
-define('mysql_database', default='')
-define('mysql_user', default='')
-define('mysql_password', default='')
+define("session_encryption_key", default=os.environ.get("SESSION_ENCRYPTION_KEY", ""))
+define("mysql_host", default=os.environ.get("MYSQL_HOST", ""))
+define("mysql_database", default=os.environ.get("MYSQL_DATABASE", ""))
+define("mysql_user", default=os.environ.get("MYSQL_USER", ""))
+define("mysql_password", default=os.environ.get("MYSQL_PASSWORD", ""))
+
+
+def log_request_without_query(handler):
+    status = handler.get_status()
+    if status < 400:
+        log_method = access_log.info
+    elif status < 500:
+        log_method = access_log.warning
+    else:
+        log_method = access_log.error
+    log_method(
+        "%d %s %s (%s) %.2fms",
+        status,
+        handler.request.method,
+        handler.request.path,
+        handler.request.remote_ip,
+        1000.0 * handler.request.request_time(),
+    )
 
 
 class Application(tornado.web.Application):
-    def __init__(self):
+    def __init__(
+        self,
+        database=None,
+        facebook_client=None,
+        session_cipher=None,
+        cookie_secret=None,
+        facebook_redirect_uri=None,
+    ):
+        configured_cookie_secret = cookie_secret or options.cookie_secret
+        if not configured_cookie_secret:
+            raise RuntimeError("COOKIE_SECRET is required")
+        configured_redirect_uri = facebook_redirect_uri or options.facebook_redirect_uri
+        if not configured_redirect_uri.startswith("https://"):
+            raise RuntimeError("FACEBOOK_REDIRECT_URI must use HTTPS")
         handlers = [
 			(r"/", MainHandler),
 			(r"/calendar/post", cal.CalHandler),
@@ -67,7 +98,7 @@ class Application(tornado.web.Application):
 			(r"/privacy", Privacy),
         ]
         settings = dict(
-            cookie_secret=options.cookie_secret,
+            cookie_secret=configured_cookie_secret,
             login_url="/auth/login",
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
             static_path=os.path.join(os.path.dirname(__file__), "static"),
@@ -75,40 +106,69 @@ class Application(tornado.web.Application):
             facebook_api_key=options.facebook_api_key,
             facebook_secret=options.facebook_secret,
             ui_modules={"Post": PostModule},
-            autoescape=None,
+            autoescape="xhtml_escape",
+            database=database or Database(
+                host=options.mysql_host,
+                database=options.mysql_database,
+                user=options.mysql_user,
+                password=options.mysql_password,
+            ),
+            facebook_client=facebook_client or FacebookClient(
+                options.facebook_api_key,
+                options.facebook_secret,
+                version=options.facebook_graph_version,
+            ),
+            session_cipher=session_cipher or SessionCipher(options.session_encryption_key),
+            facebook_redirect_uri=configured_redirect_uri,
+            log_function=log_request_without_query,
         )
         tornado.web.Application.__init__(self, handlers, **settings)
-        # make it easy to connect to the database.
-        self.db = tornado.database.Connection(
-            host=options.mysql_host, database=options.mysql_database,
-            user=options.mysql_user, password=options.mysql_password)
 
 
-class FeedHandler(tornado.web.RequestHandler, tornado.auth.FacebookGraphMixin):
+class FeedHandler(tornado.web.RequestHandler):
     def get(self):
         self.render('feedit.html')
 
 
 class MainHandler(tornado.web.RequestHandler):
-    @tornado.web.asynchronous
     def get(self):
         self.render('index.html')
 
 class Privacy(tornado.web.RequestHandler):
-	@tornado.web.asynchronous
 	def get(self):
 		self.render('privacy.html')
 
-class SuggestHandler(BaseHandler, tornado.auth.FacebookGraphMixin):
+class SuggestHandler(BaseHandler):
+    @staticmethod
+    def validate_suggestion_url(value):
+        try:
+            parsed = urlsplit(value)
+            valid = (
+                isinstance(value, str)
+                and 0 < len(value) <= 2048
+                and not any(ord(character) < 32 or ord(character) == 127 for character in value)
+                and parsed.scheme.lower() in ("http", "https")
+                and bool(parsed.hostname)
+                and parsed.username is None
+                and parsed.password is None
+            )
+        except (TypeError, ValueError):
+            valid = False
+        if not valid:
+            raise tornado.web.HTTPError(400)
+        return value
+
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _user_id = self.get_current_user()['id']
         _user_name = self.get_current_user()['name']
-        _name = escape(self.get_argument('name'))
-        _url = escape(self.get_argument('url'))
-        _address = escape(self.get_argument('address'))
-        _city = escape(self.get_argument('city'))
-        _event_id = escape(self.get_argument('event_id'))
+        _name = self.get_argument('name')
+        _url = self.get_argument('url')
+        _address = self.get_argument('address')
+        _city = self.get_argument('city')
+        _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
+        _url = self.validate_suggestion_url(_url)
         self.db.execute("""INSERT INTO willbeout_suggest (user_id,
                                                     user_name,
                                                     event_id,
@@ -117,8 +177,7 @@ class SuggestHandler(BaseHandler, tornado.auth.FacebookGraphMixin):
                                                     address,
                                                     url) VALUES (
                                                         %s, %s, %s, %s, %s, %s, %s)""",
-                        int(_user_id), _user_name, int(
-                            _event_id), _name, _city, _address,
+                        int(_user_id), _user_name, _event_id, _name, _city, _address,
                         _url)
 
         self.write('OK')

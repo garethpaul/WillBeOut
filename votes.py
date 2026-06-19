@@ -1,14 +1,15 @@
 import base
-import tornado.auth
 import tornado.web
 
-class VoteHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
+class VoteHandler(base.BaseHandler):
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _user_id = self.get_current_user()['id']
         _user_name = self.get_current_user()['name']
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
         _suggestion_id = self.get_int_argument('id')
+        self.require_event_suggestion(_suggestion_id, _event_id)
         # check if vote exists
         c = self.db.execute_rowcount(
             "SELECT * FROM willbeout_votes WHERE user_id = %s and event_id = %s and suggestion_id = %s",
@@ -25,11 +26,13 @@ class VoteHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
         else:
             self.redirect('/event?event_id=' + str(_event_id))
 
-class ChangeVoteHandler(base.BaseHandler, tornado.auth.FacebookGraphMixin):
+class ChangeVoteHandler(base.BaseHandler):
     @tornado.web.authenticated
-    def post(self):
+    async def post(self):
         _suggestion_id = self.get_int_argument('id')
         _event_id = self.get_int_argument('event_id')
+        await self.require_event_access(_event_id)
+        self.require_event_suggestion(_suggestion_id, _event_id)
         _user_id = self.get_current_user()['id']
         self.db.execute(
             "DELETE FROM willbeout_votes WHERE suggestion_id = %s AND user_id = %s AND event_id = %s",
