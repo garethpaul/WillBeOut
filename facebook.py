@@ -5,9 +5,9 @@ import tornado.ioloop
 import tornado.options
 import tornado.web
 from base import BaseHandler
-from html import escape
 from tornado.log import access_log
 from tornado.options import define, options
+from urllib.parse import urlsplit
 from database import Database
 from facebook_client import FacebookClient
 from session import SessionCipher
@@ -139,16 +139,36 @@ class Privacy(tornado.web.RequestHandler):
 		self.render('privacy.html')
 
 class SuggestHandler(BaseHandler):
+    @staticmethod
+    def validate_suggestion_url(value):
+        try:
+            parsed = urlsplit(value)
+            valid = (
+                isinstance(value, str)
+                and 0 < len(value) <= 2048
+                and not any(ord(character) < 32 or ord(character) == 127 for character in value)
+                and parsed.scheme.lower() in ("http", "https")
+                and bool(parsed.hostname)
+                and parsed.username is None
+                and parsed.password is None
+            )
+        except (TypeError, ValueError):
+            valid = False
+        if not valid:
+            raise tornado.web.HTTPError(400)
+        return value
+
     @tornado.web.authenticated
     async def post(self):
         _user_id = self.get_current_user()['id']
         _user_name = self.get_current_user()['name']
-        _name = escape(self.get_argument('name'))
-        _url = escape(self.get_argument('url'))
-        _address = escape(self.get_argument('address'))
-        _city = escape(self.get_argument('city'))
+        _name = self.get_argument('name')
+        _url = self.get_argument('url')
+        _address = self.get_argument('address')
+        _city = self.get_argument('city')
         _event_id = self.get_int_argument('event_id')
         await self.require_event_access(_event_id)
+        _url = self.validate_suggestion_url(_url)
         self.db.execute("""INSERT INTO willbeout_suggest (user_id,
                                                     user_name,
                                                     event_id,

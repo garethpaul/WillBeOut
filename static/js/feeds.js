@@ -2,7 +2,7 @@
 function postToFeed(link, place, _id, from, to) {
   var obj = {
     method: 'feed',
-    link: 'https://willbeout.herokuapp.com/event?id=' + _id ,
+    link: link,
     picture: 'https://willbeout.herokuapp.com/static/img/og.png',
     name: place,
     caption: 'Join me for Drinks/Food?',
@@ -14,6 +14,20 @@ function postToFeed(link, place, _id, from, to) {
   }
   FB.ui(obj, callback);
 }
+
+$(function() {
+  $('.share-event').click(function(event) {
+    event.preventDefault();
+    var share = $(this);
+    postToFeed(
+      share.attr('data-link'),
+      share.attr('data-place'),
+      share.attr('data-id'),
+      share.attr('data-from'),
+      share.attr('data-to')
+    );
+  });
+});
 
 function fDate(date){
 	a = new Date(date);

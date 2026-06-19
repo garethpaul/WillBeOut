@@ -37,6 +37,7 @@ HASH_VERIFIED_LOCK_PLAN = ROOT / "docs" / "plans" / "2026-06-15-hash-verified-pr
 VOTE_SUGGESTION_BINDING_PLAN = ROOT / "docs" / "plans" / "2026-06-16-vote-suggestion-event-binding.md"
 TORNADO_SECURITY_UPDATE_PLAN = ROOT / "docs" / "plans" / "2026-06-16-tornado-6.5.7-security-update.md"
 AVAILABILITY_PAYLOAD_PLAN = ROOT / "docs" / "plans" / "2026-06-16-availability-payload-validation.md"
+AVAILABILITY_TRANSACTION_PLAN = ROOT / "docs" / "plans" / "2026-06-17-availability-replacement-transaction.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -59,10 +60,12 @@ CODEQL_CONFIG = ROOT / ".github" / "codeql-config.yml"
 GITIGNORE = ROOT / ".gitignore"
 MAKEFILE = ROOT / "Makefile"
 EVENT_TEMPLATE = ROOT / "templates" / "event.html"
+EVENTS_TEMPLATE = ROOT / "templates" / "events.html"
 BASE_TEMPLATE = ROOT / "templates" / "base.html"
 STREAM_TEMPLATE = ROOT / "templates" / "stream.html"
 MOBILE_EVENT_TEMPLATE = ROOT / "templates" / "mobile_event.html"
 EVENTS_JAVASCRIPT = ROOT / "static" / "js" / "events.js"
+FEEDS_JAVASCRIPT = ROOT / "static" / "js" / "feeds.js"
 VENDORED_BOOTSTRAP = ROOT / "static" / "js" / "bootstrap.js"
 
 
@@ -350,7 +353,7 @@ def test_event_page_binds_authenticated_user_to_vote_query():
             "event template must use DictCursor-compatible access: " + legacy_attribute,
         )
     assert_true(
-        'postToFeed("https://willbeout.com/event?id={{ event[\'id\'] }}"' in event_template,
+        'data-link="https://willbeout.com/event?event_id={{ event[\'id\'] }}"' in event_template,
         "event sharing must use dictionary access for the event id",
     )
 
@@ -595,12 +598,21 @@ def test_availability_payload_is_validated_before_mutation():
         "availability parsing must decode and split the complete payload",
     )
     assert_true(
+        'if value == "":\n                return []' in time_handler_source,
+        "empty availability payloads must represent an intentional clear",
+    )
+    assert_true(
         "if any(not token for token in tokens):" in time_handler_source,
         "availability parsing must reject empty tokens",
     )
     assert_true(
-        "return [int(token) for token in tokens]" in time_handler_source,
+        "times = [int(token) for token in tokens]" in time_handler_source,
         "availability parsing must convert every token before returning",
+    )
+    assert_true(
+        "len(times) != len(set(times))" in time_handler_source
+        and "any(time < 9 or time > 24 for time in times)" in time_handler_source,
+        "availability parsing must reject duplicates and times outside the rendered range",
     )
     assert_true(
         "except (TypeError, ValueError):" in time_handler_source
@@ -610,16 +622,17 @@ def test_availability_payload_is_validated_before_mutation():
     parse_call = time_handler_source.index(
         "_times = self.parse_available_times(self.get_argument('availabletimes'))"
     )
-    delete_call = time_handler_source.index(
-        'self.db.execute(\n            "DELETE FROM willbeout_availability'
+    transaction_call = time_handler_source.index(
+        'self.db.execute_transaction("willbeout_availability", statements)'
     )
-    insert_loop = time_handler_source.index("for i in _times:")
     assert_true(
-        parse_call < delete_call < insert_loop,
+        parse_call < transaction_call,
         "all availability tokens must be valid before replacement starts",
     )
     for test_name in (
         "test_availability_rejects_malformed_payload_before_mutation",
+        "test_availability_rejects_duplicate_or_out_of_range_times",
+        "test_empty_availability_atomically_clears_existing_times",
         "test_availability_validates_all_times_before_ordered_replacement",
     ):
         assert_true(test_name in runtime_tests, "runtime coverage is missing {0}".format(test_name))
@@ -637,6 +650,124 @@ def test_availability_payload_is_validated_before_mutation():
         assert_true(
             phrase in (ROOT / relative_path).read_text(),
             "{0} must document availability payload validation".format(relative_path),
+        )
+
+
+def test_availability_selection_updates_payload_after_deselect():
+    event_template = EVENT_TEMPLATE.read_text()
+    assert_true(
+        "at.splice(at.indexOf(_id), 1);" in event_template,
+        "availability deselection must remove only the selected time",
+    )
+    assert_true(
+        event_template.count("$('#availabletimes').val(at.join(','));") == 2,
+        "availability selection and deselection must both refresh the submitted payload",
+    )
+
+
+def test_event_template_keeps_user_text_out_of_executable_javascript():
+    event_template = EVENT_TEMPLATE.read_text()
+    events_template = EVENTS_TEMPLATE.read_text()
+    base_template = BASE_TEMPLATE.read_text()
+    feeds_javascript = FEEDS_JAVASCRIPT.read_text()
+    assert_true(
+        "onclick='postToFeed" not in event_template + events_template,
+        "event names must not be interpolated into inline JavaScript",
+    )
+    assert_true(
+        event_template.count('class="btn-auth btn-facebook share-event"') == 1
+        and events_template.count('class="btn-auth btn-facebook share-event"') == 1
+        and "$('.share-event').click(function(event)" in feeds_javascript
+        and "link: link" in feeds_javascript,
+        "event sharing must pass escaped data attributes through a fixed handler",
+    )
+    assert_true(
+        "target='_blank' rel='noopener noreferrer'" in event_template,
+        "external suggestion links must isolate the opener",
+    )
+    assert_true(
+        base_template.count('static_url("js/feeds.js")') == 1,
+        "the share handler script must load exactly once",
+    )
+
+
+def test_availability_replacement_uses_one_transaction():
+    database_source = DATABASE.read_text()
+    events_source = EVENTS.read_text()
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+    time_handler_source = events_source[events_source.index("class TimeHandler"):]
+
+    transaction_method = database_source[database_source.index("def execute_transaction"):]
+    metadata_check = transaction_method.index("information_schema.TABLES")
+    statement_loop = transaction_method.index("for statement, parameters in statements:")
+    commit_call = transaction_method.index("connection.commit()")
+    assert_true(
+        metadata_check < statement_loop < commit_call,
+        "transaction engine validation must precede writes and one final commit",
+    )
+    assert_true(
+        'TRANSACTIONAL_ENGINES = frozenset(("INNODB",))' in database_source,
+        "availability writes must require an explicit transactional engine allowlist",
+    )
+    assert_true(
+        'table.get("ENGINE")' in transaction_method
+        and "raise TransactionUnavailableError" in transaction_method,
+        "missing or unsupported table engines must fail closed",
+    )
+    assert_true(
+        "connection.rollback()" in transaction_method
+        and "connection.close()" in transaction_method,
+        "transaction failures must roll back and every connection must close",
+    )
+    failure_block = transaction_method[transaction_method.index("except Exception:"):]
+    rollback_call = failure_block.index("connection.rollback()")
+    failure_close = failure_block.index("connection.close()")
+    original_raise = failure_block.index("\n            raise\n")
+    success_close = failure_block.rindex("connection.close()")
+    assert_true(
+        rollback_call < failure_close < original_raise < success_close,
+        "transaction cleanup must preserve the original failure before the success close",
+    )
+    assert_true(
+        transaction_method.count("connection.close()") == 2,
+        "transaction connections must close on both failure and success",
+    )
+    transaction_call = time_handler_source.index(
+        'self.db.execute_transaction("willbeout_availability", statements)'
+    )
+    delete_statement = time_handler_source.index("DELETE FROM willbeout_availability")
+    insert_statement = time_handler_source.index("INSERT INTO willbeout_availability")
+    assert_true(
+        delete_statement < insert_statement < transaction_call,
+        "availability replacement must submit one ordered DELETE/INSERT transaction",
+    )
+    assert_true(
+        "self.db.execute(" not in time_handler_source[:time_handler_source.index("async def get(self):")],
+        "availability replacement must not retain independently committed writes",
+    )
+    for test_name in (
+        "test_database_commits_ordered_transaction_on_supported_engine",
+        "test_database_rejects_nontransactional_engine_before_writes",
+        "test_database_rejects_missing_transaction_table_before_writes",
+        "test_database_rolls_back_failed_transaction_without_later_writes",
+        "test_database_preserves_transaction_error_when_cleanup_fails",
+        "test_availability_validates_all_times_before_ordered_replacement",
+    ):
+        assert_true(test_name in runtime_tests, "runtime coverage is missing {0}".format(test_name))
+    assert_true(
+        "test_availability_replacement_uses_one_transaction" in registered_contract_tests(),
+        "availability transaction contract must remain registered",
+    )
+    documentation = {
+        "README.md": "Availability replacement uses one verified InnoDB transaction",
+        "SECURITY.md": "Availability replacement verifies InnoDB before DELETE",
+        "VISION.md": "Replace availability atomically on a verified transactional table",
+        "CHANGES.md": "Made availability replacement atomic on verified InnoDB storage",
+    }
+    for relative_path, phrase in documentation.items():
+        assert_true(
+            phrase in (ROOT / relative_path).read_text(),
+            "{0} must document atomic availability replacement".format(relative_path),
         )
 
 
@@ -725,7 +856,7 @@ def test_active_template_integrations_use_https():
         "https://connect.facebook.net/en_US/all.js",
         "https://api.yelp.com/business_review_search?",
         "https://www.facebook.com/profile.php?id=",
-        "https://willbeout.com/event?id=",
+        "https://willbeout.com/event?event_id=",
     ]:
         assert_true(expected in combined, "active template integration must stay on HTTPS: {0}".format(expected))
 
@@ -975,6 +1106,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(VOTE_SUGGESTION_BINDING_PLAN, "vote suggestion event binding")
     assert_completed_plan(TORNADO_SECURITY_UPDATE_PLAN, "Tornado 6.5.7 security update")
     assert_completed_plan(AVAILABILITY_PAYLOAD_PLAN, "availability payload validation")
+    assert_completed_plan(AVAILABILITY_TRANSACTION_PLAN, "availability replacement transaction")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -998,6 +1130,9 @@ def main():
         test_attendee_event_ids_are_validated_before_database_access,
         test_availability_event_ids_are_validated_before_database_access,
         test_availability_payload_is_validated_before_mutation,
+        test_availability_selection_updates_payload_after_deselect,
+        test_event_template_keeps_user_text_out_of_executable_javascript,
+        test_availability_replacement_uses_one_transaction,
         test_message_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_generated_macos_metadata_is_not_committed,

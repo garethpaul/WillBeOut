@@ -49,7 +49,7 @@ class AuthLoginHandler(base.BaseHandler):
             valid_state = expected_state and hmac.compare_digest(
                 expected_state.decode("ascii"), supplied_state
             )
-        except UnicodeError:
+        except (TypeError, UnicodeError):
             valid_state = False
         if not valid_state:
             self._finish_oauth_error(400, "Invalid OAuth state")

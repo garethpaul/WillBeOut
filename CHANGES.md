@@ -1,8 +1,19 @@
 # Changes
 
+## 2026-06-19
+
+- Rejected non-ASCII OAuth callback state without raising an internal error.
+- Preserved raw suggestion text for single-pass template autoescaping and
+  rejected non-HTTP(S) suggestion links before storage.
+- Removed inline event-name JavaScript from share links and isolated external
+  suggestion links from their opener without double-loading the share handler.
+- Restricted availability to unique rendered hours, allowed atomic clearing, and
+  kept the submitted payload synchronized after client-side deselection.
+
 ## 2026-06-16
 
 - Validated complete availability payloads before deleting or inserting saved times.
+- Made availability replacement atomic on verified InnoDB storage.
 - Updated the hash-locked Tornado runtime from 6.5.6 to 6.5.7 to remediate
   GHSA-pw6j-qg29-8w7f while preserving the reviewed resolved graph.
 - Blocked cross-event vote creation and deletion by requiring each suggestion

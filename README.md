@@ -118,6 +118,8 @@ isolated credentialed smoke test.
 - Votes require the suggestion to belong to the authorized event before any
   duplicate check, insertion, or deletion.
 - Availability replacements validate every submitted time before deleting saved values.
+- Availability replacement uses one verified InnoDB transaction so DELETE and
+  ordered INSERT statements commit or roll back together.
 - PyMySQL operations keep SQL and parameters separate, roll back failed writes,
   and close every connection.
 - Tornado XSRF checks protect writes, and state changes remain POST-only.
