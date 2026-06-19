@@ -96,7 +96,7 @@ var e = {
 	 <td><a href='/event?event_id={{ i.id }}'>{{ i.place }}</a></td>
 	<td>{{ i.f }}</td>
 	<td>{{ i.t }}</td>
-	<td><a class="btn-auth btn-facebook" href="#" onclick='postToFeed("https://willbeout.com/event?id={{ i.id }}", "{{ i.place }}", "{{ i.id }}", "{{ i.f }}", "{{ i.t }}");'>Share with Friends</a></td>
+	<td><a class="btn-auth btn-facebook share-event" href="#" data-link="https://willbeout.com/event?event_id={{ i.id }}" data-place="{{ i.place }}" data-id="{{ i.id }}" data-from="{{ i.f }}" data-to="{{ i.t }}">Share with Friends</a></td>
 	</a></td>
 	</tr>
 	{% end %}

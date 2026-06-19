@@ -458,6 +458,66 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
         self.assertEqual(1, len(self.database.execute_calls))
         self.assertEqual("/me/friends", self.graph.request_calls[0][0])
 
+    def test_suggestion_storage_preserves_unescaped_user_text(self):
+        self.database.event = {"id": 1, "userid": "42"}
+
+        response = self.fetch(
+            "/suggest",
+            method="POST",
+            body=urlencode({
+                "event_id": 1,
+                "name": "Tom & Jerry",
+                "url": "https://example.test/?a=1&b=2",
+                "address": "1 < 2 Street",
+                "city": 'Quote "Town"',
+            }),
+            headers=self._auth_headers(),
+            follow_redirects=False,
+        )
+
+        self.assertEqual(200, response.code)
+        self.assertEqual(1, len(self.database.execute_calls))
+        _statement, parameters = self.database.execute_calls[0]
+        self.assertEqual(
+            (
+                42,
+                "Ada",
+                1,
+                "Tom & Jerry",
+                'Quote "Town"',
+                "1 < 2 Street",
+                "https://example.test/?a=1&b=2",
+            ),
+            parameters,
+        )
+
+    def test_suggestion_rejects_unsafe_url_scheme_before_mutation(self):
+        self.database.event = {"id": 1, "userid": "42"}
+
+        for unsafe_url in (
+            "javascript:alert(1)",
+            "data:text/html,unsafe",
+            "//example.test/path",
+            "https://user:password@example.test/path",
+        ):
+            self.database.reset_protected_calls()
+            response = self.fetch(
+                "/suggest",
+                method="POST",
+                body=urlencode({
+                    "event_id": 1,
+                    "name": "Unsafe",
+                    "url": unsafe_url,
+                    "address": "1 Main Street",
+                    "city": "Example",
+                }),
+                headers=self._auth_headers(),
+                follow_redirects=False,
+            )
+
+            self.assertEqual(400, response.code, unsafe_url)
+            self.assertEqual([], self.database.execute_calls, unsafe_url)
+
     def test_vote_mutations_reject_suggestion_outside_authorized_event(self):
         self.database.event = {"id": 1, "userid": "42"}
         self.database.suggestion = None
@@ -509,7 +569,7 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
     def test_availability_rejects_malformed_payload_before_mutation(self):
         self.database.event = {"id": 1, "userid": "42"}
 
-        for available_times in ("1,invalid", "1,,2", ""):
+        for available_times in ("9,invalid", "9,,10"):
             self.database.reset_protected_calls()
             response = self.fetch(
                 "/time",
@@ -523,13 +583,50 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
             self.assertEqual([], self.database.execute_calls, available_times)
             self.assertEqual([], self.database.transaction_calls, available_times)
 
+    def test_availability_rejects_duplicate_or_out_of_range_times(self):
+        self.database.event = {"id": 1, "userid": "42"}
+
+        for available_times in ("8", "25", "9,9"):
+            self.database.reset_protected_calls()
+            response = self.fetch(
+                "/time",
+                method="POST",
+                body=urlencode({"event_id": 1, "availabletimes": available_times}),
+                headers=self._auth_headers(),
+                follow_redirects=False,
+            )
+
+            self.assertEqual(400, response.code, available_times)
+            self.assertEqual([], self.database.execute_calls, available_times)
+            self.assertEqual([], self.database.transaction_calls, available_times)
+
+    def test_empty_availability_atomically_clears_existing_times(self):
+        self.database.event = {"id": 1, "userid": "42"}
+
+        response = self.fetch(
+            "/time",
+            method="POST",
+            body=urlencode({"event_id": 1, "availabletimes": ""}),
+            headers=self._auth_headers(),
+            follow_redirects=False,
+        )
+
+        self.assertEqual(302, response.code)
+        self.assertEqual(1, len(self.database.transaction_calls))
+        table_name, statements = self.database.transaction_calls[0]
+        self.assertEqual("willbeout_availability", table_name)
+        self.assertEqual(1, len(statements))
+        delete_statement, delete_parameters = statements[0]
+        self.assertIn("DELETE FROM willbeout_availability", delete_statement)
+        self.assertEqual((1, 42), delete_parameters)
+
     def test_availability_validates_all_times_before_ordered_replacement(self):
         self.database.event = {"id": 1, "userid": "42"}
 
         response = self.fetch(
             "/time",
             method="POST",
-            body=urlencode({"event_id": 1, "availabletimes": "2,2,5"}),
+            body=urlencode({"event_id": 1, "availabletimes": "9,12,24"}),
             headers=self._auth_headers(),
             follow_redirects=False,
         )
@@ -545,9 +642,9 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
         self.assertEqual((1, 42), delete_parameters)
         self.assertEqual(
             [
-                (42, "Ada", 2, 1),
-                (42, "Ada", 2, 1),
-                (42, "Ada", 5, 1),
+                (42, "Ada", 9, 1),
+                (42, "Ada", 12, 1),
+                (42, "Ada", 24, 1),
             ],
             [parameters for _statement, parameters in statements[1:]],
         )
@@ -614,6 +711,17 @@ class AuthHandlerTest(AsyncHTTPTestCase):
     def test_oauth_callback_rejects_invalid_state_before_exchange(self):
         response = self.fetch(
             "/auth/login?code=code&state=invalid",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(400, response.code)
+        self.assertEqual([], self.graph.auth_calls)
+
+    def test_oauth_callback_rejects_non_ascii_state_before_exchange(self):
+        _state, cookie_header = self._start_oauth()
+        response = self.fetch(
+            "/auth/login?" + urlencode({"code": "code", "state": "é"}),
+            headers={"Cookie": cookie_header},
             follow_redirects=False,
         )
 

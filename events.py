@@ -50,10 +50,15 @@ class TimeHandler(base.BaseHandler):
     @staticmethod
     def parse_available_times(value):
         try:
+            if value == "":
+                return []
             tokens = unquote(value).split(',')
             if any(not token for token in tokens):
                 raise ValueError
-            return [int(token) for token in tokens]
+            times = [int(token) for token in tokens]
+            if len(times) != len(set(times)) or any(time < 9 or time > 24 for time in times):
+                raise ValueError
+            return times
         except (TypeError, ValueError):
             raise tornado.web.HTTPError(400)
 

@@ -60,10 +60,12 @@ CODEQL_CONFIG = ROOT / ".github" / "codeql-config.yml"
 GITIGNORE = ROOT / ".gitignore"
 MAKEFILE = ROOT / "Makefile"
 EVENT_TEMPLATE = ROOT / "templates" / "event.html"
+EVENTS_TEMPLATE = ROOT / "templates" / "events.html"
 BASE_TEMPLATE = ROOT / "templates" / "base.html"
 STREAM_TEMPLATE = ROOT / "templates" / "stream.html"
 MOBILE_EVENT_TEMPLATE = ROOT / "templates" / "mobile_event.html"
 EVENTS_JAVASCRIPT = ROOT / "static" / "js" / "events.js"
+FEEDS_JAVASCRIPT = ROOT / "static" / "js" / "feeds.js"
 VENDORED_BOOTSTRAP = ROOT / "static" / "js" / "bootstrap.js"
 
 
@@ -351,7 +353,7 @@ def test_event_page_binds_authenticated_user_to_vote_query():
             "event template must use DictCursor-compatible access: " + legacy_attribute,
         )
     assert_true(
-        'postToFeed("https://willbeout.com/event?id={{ event[\'id\'] }}"' in event_template,
+        'data-link="https://willbeout.com/event?event_id={{ event[\'id\'] }}"' in event_template,
         "event sharing must use dictionary access for the event id",
     )
 
@@ -596,12 +598,21 @@ def test_availability_payload_is_validated_before_mutation():
         "availability parsing must decode and split the complete payload",
     )
     assert_true(
+        'if value == "":\n                return []' in time_handler_source,
+        "empty availability payloads must represent an intentional clear",
+    )
+    assert_true(
         "if any(not token for token in tokens):" in time_handler_source,
         "availability parsing must reject empty tokens",
     )
     assert_true(
-        "return [int(token) for token in tokens]" in time_handler_source,
+        "times = [int(token) for token in tokens]" in time_handler_source,
         "availability parsing must convert every token before returning",
+    )
+    assert_true(
+        "len(times) != len(set(times))" in time_handler_source
+        and "any(time < 9 or time > 24 for time in times)" in time_handler_source,
+        "availability parsing must reject duplicates and times outside the rendered range",
     )
     assert_true(
         "except (TypeError, ValueError):" in time_handler_source
@@ -620,6 +631,8 @@ def test_availability_payload_is_validated_before_mutation():
     )
     for test_name in (
         "test_availability_rejects_malformed_payload_before_mutation",
+        "test_availability_rejects_duplicate_or_out_of_range_times",
+        "test_empty_availability_atomically_clears_existing_times",
         "test_availability_validates_all_times_before_ordered_replacement",
     ):
         assert_true(test_name in runtime_tests, "runtime coverage is missing {0}".format(test_name))
@@ -638,6 +651,44 @@ def test_availability_payload_is_validated_before_mutation():
             phrase in (ROOT / relative_path).read_text(),
             "{0} must document availability payload validation".format(relative_path),
         )
+
+
+def test_availability_selection_updates_payload_after_deselect():
+    event_template = EVENT_TEMPLATE.read_text()
+    assert_true(
+        "at.splice(at.indexOf(_id), 1);" in event_template,
+        "availability deselection must remove only the selected time",
+    )
+    assert_true(
+        event_template.count("$('#availabletimes').val(at.join(','));") == 2,
+        "availability selection and deselection must both refresh the submitted payload",
+    )
+
+
+def test_event_template_keeps_user_text_out_of_executable_javascript():
+    event_template = EVENT_TEMPLATE.read_text()
+    events_template = EVENTS_TEMPLATE.read_text()
+    base_template = BASE_TEMPLATE.read_text()
+    feeds_javascript = FEEDS_JAVASCRIPT.read_text()
+    assert_true(
+        "onclick='postToFeed" not in event_template + events_template,
+        "event names must not be interpolated into inline JavaScript",
+    )
+    assert_true(
+        event_template.count('class="btn-auth btn-facebook share-event"') == 1
+        and events_template.count('class="btn-auth btn-facebook share-event"') == 1
+        and "$('.share-event').click(function(event)" in feeds_javascript
+        and "link: link" in feeds_javascript,
+        "event sharing must pass escaped data attributes through a fixed handler",
+    )
+    assert_true(
+        "target='_blank' rel='noopener noreferrer'" in event_template,
+        "external suggestion links must isolate the opener",
+    )
+    assert_true(
+        base_template.count('static_url("js/feeds.js")') == 1,
+        "the share handler script must load exactly once",
+    )
 
 
 def test_availability_replacement_uses_one_transaction():
@@ -805,7 +856,7 @@ def test_active_template_integrations_use_https():
         "https://connect.facebook.net/en_US/all.js",
         "https://api.yelp.com/business_review_search?",
         "https://www.facebook.com/profile.php?id=",
-        "https://willbeout.com/event?id=",
+        "https://willbeout.com/event?event_id=",
     ]:
         assert_true(expected in combined, "active template integration must stay on HTTPS: {0}".format(expected))
 
@@ -1079,6 +1130,8 @@ def main():
         test_attendee_event_ids_are_validated_before_database_access,
         test_availability_event_ids_are_validated_before_database_access,
         test_availability_payload_is_validated_before_mutation,
+        test_availability_selection_updates_payload_after_deselect,
+        test_event_template_keeps_user_text_out_of_executable_javascript,
         test_availability_replacement_uses_one_transaction,
         test_message_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,
