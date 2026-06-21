@@ -64,11 +64,16 @@ Helpful reports include:
   hashes with anonymous CORS. Treat URL, version, hash, and tag-count changes
   as supply-chain changes requiring review.
 - GitHub Actions installs the exact production lock with pip hash verification
-  and runs `make check` with
+  and runs `/usr/bin/make check` with
   immutable actions, fixed Ubuntu runners, read-only permissions,
   credential-free checkout, superseded-run cancellation, and structural policy mutations;
   review workflow, checker, and template integration changes as part of the
   supply-chain surface.
+- Repository verification rejects Make startup injection, unsafe execution
+  modes, caller-controlled roots and shells, later public recipe replacement,
+  and Make expressions in the Python executable path. A caller still controls
+  a bare `python3` through `PATH`; use an explicit reviewed interpreter path
+  for exact local reproduction.
 - CodeQL analyzes actions, Python, and first-party JavaScript. Only the used
   vendored Bootstrap 2.1.0 source is excluded, and its exact header and digest
   are contract-checked. A separate pinned job audits the resolved production

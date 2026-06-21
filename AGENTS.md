@@ -17,12 +17,12 @@
 ## Development commands
 
 - Install dependencies: `python3 -m pip install --require-hashes -r requirements.lock`
-- Full baseline: `make check`
-- Combined verification: `make verify`
-- Lint/static checks: `make lint`
-- Workflow contract mutations: `make contract-test`
-- Tests: `make test`
-- Build: `make build`
+- Full baseline: `/usr/bin/make check`
+- Combined verification: `/usr/bin/make verify`
+- Lint/static checks: `/usr/bin/make lint`
+- Workflow contract mutations: `/usr/bin/make contract-test`
+- Tests: `/usr/bin/make test`
+- Build: `/usr/bin/make build`
 - Dependency audit: `pip-audit -r requirements.lock`
 - Regenerate the lock after reviewed manifest changes: `uv pip compile requirements.txt --generate-hashes --universal --python-version 3.10 --output-file requirements.lock`
 
@@ -40,6 +40,9 @@
 - Keep README verification notes in sync when commands, fixtures, or supported toolchains change.
 - Keep hosted verification read-only and credential-free with immutable action
   pins; update structural workflow mutations with intentional policy changes.
+- Preserve the Make authority boundary: no startup files, unsafe modes,
+  caller-selected roots or shells, recipe replacement, or Make expressions in
+  `PYTHON`.
 
 ## PR / change guidance
 
