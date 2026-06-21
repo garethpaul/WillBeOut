@@ -64,7 +64,7 @@ Helpful reports include:
   hashes with anonymous CORS. Treat URL, version, hash, and tag-count changes
   as supply-chain changes requiring review.
 - GitHub Actions installs the exact production lock with pip hash verification
-  and runs `make check` with
+  and runs `/usr/bin/make check` with
   immutable actions, fixed Ubuntu runners, read-only permissions,
   credential-free checkout, superseded-run cancellation, and structural policy mutations;
   review workflow, checker, and template integration changes as part of the
@@ -87,6 +87,11 @@ Vote mutations also require an exact suggestion and event match; missing or
 cross-event suggestions return 404 before vote storage is read or changed.
 
 ## Dependency and Supply Chain Security
+
+Repository verification fixes its canonical root and `/bin/sh`, rejects Make
+startup files and unsafe execution modes, and treats `PYTHON` as a literal
+executable path. Earlier GNU Make startup parsing and caller control of the
+default `python3` PATH remain documented trust boundaries.
 
 Dependency updates should come from trusted package managers and should keep lockfiles in sync when lockfiles exist. Production lock entries must remain exactly pinned with reviewed SHA-256 hashes, and canonical installs must use pip's `--require-hashes` mode. Do not commit credentials, private keys, tokens, generated secrets, or machine-local configuration. If a vulnerability depends on a compromised package, typosquatting risk, insecure transitive dependency, or unsafe build step, include the package name, affected version, and the path through which it is used.
 

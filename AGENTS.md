@@ -17,12 +17,12 @@
 ## Development commands
 
 - Install dependencies: `python3 -m pip install --require-hashes -r requirements.lock`
-- Full baseline: `make check`
-- Combined verification: `make verify`
-- Lint/static checks: `make lint`
+- Full baseline: `/usr/bin/make check`
+- Combined verification: `/usr/bin/make verify`
+- Lint/static checks: `/usr/bin/make lint`
 - Workflow contract mutations: `make contract-test`
-- Tests: `make test`
-- Build: `make build`
+- Tests: `/usr/bin/make test`
+- Build: `/usr/bin/make build`
 - Dependency audit: `pip-audit -r requirements.lock`
 - Regenerate the lock after reviewed manifest changes: `uv pip compile requirements.txt --generate-hashes --universal --python-version 3.10 --output-file requirements.lock`
 
@@ -35,8 +35,10 @@
 ## Testing guidance
 
 - `test_modern_runtime.py` covers the executable modern boundary; treat
-  `make check` as the minimum baseline.
-- Start with the narrowest relevant test or Make target, then run `make check` before handing off if the change is not documentation-only.
+  `/usr/bin/make check` as the minimum baseline.
+- Start with the narrowest relevant test or Make target, then run `/usr/bin/make check` before handing off if the change is not documentation-only.
+- Preserve the checked Make authority: startup files, unsafe modes, and executable
+  Make syntax in `PYTHON` must remain rejected.
 - Keep README verification notes in sync when commands, fixtures, or supported toolchains change.
 - Keep hosted verification read-only and credential-free with immutable action
   pins; update structural workflow mutations with intentional policy changes.
@@ -64,6 +66,6 @@
 
 1. Inspect the README, Makefile, manifests, and the files directly related to the request.
 2. Make the smallest source or docs change that satisfies the task; avoid generated, vendored, or local-environment files unless required.
-3. Run the narrowest useful validation first, then `make check` or the documented package/platform gate when available.
+3. Run the narrowest useful validation first, then `/usr/bin/make check` or the documented package/platform gate when available.
 4. If a required SDK, service credential, or external runtime is unavailable, record the skipped command and why.
 5. Summarize changed files, commands run, and remaining risks or follow-up validation.

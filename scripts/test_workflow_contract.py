@@ -30,9 +30,9 @@ mutations={
 'missing hash enforcement':mutate('missing hash enforcement',' --require-hashes',''),
 'direct manifest install':mutate('direct manifest install','-r requirements.lock','-r requirements.txt'),
 'floating dependency install':mutate('floating dependency install','python -m pip install --disable-pip-version-check --require-hashes -r requirements.lock','python -m pip install tornado'),
-'extra unhashed install':mutate('extra unhashed install','          make check','          python -m pip install -r requirements.txt\n          make check'),
+'extra unhashed install':mutate('extra unhashed install','          /usr/bin/make check','          python -m pip install -r requirements.txt\n          /usr/bin/make check'),
 'removed dependency audit':mutate('removed dependency audit','          pip-audit -r requirements.lock\n',''),
-'weakened gate':mutate('weakened gate','          make check','          make lint'),
+'weakened gate':mutate('weakened gate','          /usr/bin/make check','          /usr/bin/make lint'),
 }
 for description,workflow in mutations.items(): reject(description,workflow)
 print(f'workflow contract tests passed ({len(mutations)} mutations rejected).')

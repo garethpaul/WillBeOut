@@ -1,5 +1,12 @@
 # Changes
 
+## 2026-06-21
+
+- Isolated repository verification from caller-controlled Make startup files,
+  shell state, unsafe modes, root overrides, and Python expressions.
+- Added adversarial Make authority coverage and pinned hosted verification to
+  `/usr/bin/make` without changing application or dependency-lock behavior.
+
 ## 2026-06-19
 
 - Rejected non-ASCII OAuth callback state without raising an internal error.

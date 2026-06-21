@@ -83,14 +83,15 @@ The `Procfile` uses the same Python 3 entry point.
 
 ## Testing and Verification
 
-- `make lint` compiles every first-party Python module and the static checker.
-- `make test` runs 20 static contracts and the executable no-network runtime
+- `/usr/bin/make lint` compiles every first-party Python module and the static checker.
+- `/usr/bin/make test` runs the static contracts and executable no-network runtime
   tests.
 - `make contract-test` rejects workflow policy regressions.
-- `make build`, `make verify`, and `make check` provide stable repository gates.
-- `make check` removes Python bytecode before and after verification.
+- `/usr/bin/make build`, `/usr/bin/make verify`, and `/usr/bin/make check` provide stable repository gates.
+- `/usr/bin/make check` removes Python bytecode before and after verification and
+  runs the adversarial Make authority harness.
 
-GitHub Actions installs the exact lock with `--require-hashes` and runs `make check` on Python 3.10,
+GitHub Actions installs the exact lock with `--require-hashes` and runs `/usr/bin/make check` on Python 3.10,
 3.12, and 3.14 under read-only permissions on Ubuntu 24.04. A separate Python
 3.12 job runs the pinned resolved dependency audit. CodeQL analyzes Actions,
 Python, and first-party JavaScript; only reviewed vendored Bootstrap is
@@ -149,11 +150,11 @@ isolated credentialed smoke test.
   vote mutations to suggestions within the authorized event.
 - Earlier plans under `docs/plans/` preserve the event access, integer ID,
   XSRF, secure-cookie, HTTPS integration, and CI decisions enforced by
-  `make check`.
+  `/usr/bin/make check`.
 
 ## Contributing
 
 Keep changes focused, preserve the no-network verification path, update the
-relevant plan and contracts with behavior changes, and run `make check` before
+relevant plan and contracts with behavior changes, and run `/usr/bin/make check` before
 handoff. Do not claim live Meta or MySQL behavior without an isolated
 credentialed verification record.
