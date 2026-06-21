@@ -69,11 +69,14 @@ Helpful reports include:
   credential-free checkout, superseded-run cancellation, and structural policy mutations;
   review workflow, checker, and template integration changes as part of the
   supply-chain surface.
-- Repository verification rejects Make startup injection, unsafe execution
-  modes, caller-controlled roots and shells, later public recipe replacement,
-  and Make expressions in the Python executable path. A caller still controls
-  a bare `python3` through `PATH`; use an explicit reviewed interpreter path
-  for exact local reproduction.
+- Repository verification rejects unsafe execution modes, caller-controlled
+  roots and shells for the sole reviewed Makefile, later single-colon public
+  recipe replacement, and Make expressions in the Python executable path.
+  Caller-supplied later makefiles, including double-colon public recipes and later override directives, are outside the local Make trust boundary.
+  Startup makefiles can run parse-time Make functions before the repository
+  Makefile rejects them. A caller still controls a bare `python3` through
+  `PATH`; use an explicit reviewed interpreter path for exact local
+  reproduction.
 - CodeQL analyzes actions, Python, and first-party JavaScript. Only the used
   vendored Bootstrap 2.1.0 source is excluded, and its exact header and digest
   are contract-checked. A separate pinned job audits the resolved production

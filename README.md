@@ -90,8 +90,13 @@ The `Procfile` uses the same Python 3 entry point.
 - `/usr/bin/make build`, `/usr/bin/make verify`, and `/usr/bin/make check` provide stable repository gates.
 - `/usr/bin/make check` removes Python bytecode before and after verification.
 - Public Make targets resolve the repository from the loaded Makefile and
-  reject startup injection, unsafe execution modes, caller-controlled roots or
-  shells, later recipe replacement, and Make expressions in `PYTHON`.
+  reject unsafe execution modes, caller-controlled roots or shells for the
+  sole reviewed Makefile, later single-colon recipe replacement, and Make
+  expressions in `PYTHON`.
+- Caller-supplied later makefiles, including double-colon public recipes and later override directives, are outside the local Make trust boundary.
+- Startup makefiles can run parse-time Make functions before the repository
+  Makefile rejects them; run the documented commands without extra `-f` files
+  or `MAKEFILES` when collecting local validation evidence.
 
 GitHub Actions installs the exact lock with `--require-hashes` and runs `/usr/bin/make check` on Python 3.10,
 3.12, and 3.14 under read-only permissions on Ubuntu 24.04. A separate Python

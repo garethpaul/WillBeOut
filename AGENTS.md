@@ -40,9 +40,12 @@
 - Keep README verification notes in sync when commands, fixtures, or supported toolchains change.
 - Keep hosted verification read-only and credential-free with immutable action
   pins; update structural workflow mutations with intentional policy changes.
-- Preserve the Make authority boundary: no startup files, unsafe modes,
-  caller-selected roots or shells, recipe replacement, or Make expressions in
-  `PYTHON`.
+- Preserve the Make authority boundary for the sole reviewed Makefile: no
+  unsafe modes, caller-selected roots or shells, single-colon recipe
+  replacement, or Make expressions in `PYTHON`.
+- Caller-supplied later makefiles, including double-colon public recipes and later override directives, are outside the local Make trust boundary.
+- Startup makefiles can run parse-time Make functions before the repository
+  Makefile rejects them.
 
 ## PR / change guidance
 

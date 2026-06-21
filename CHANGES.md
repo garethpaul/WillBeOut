@@ -2,9 +2,10 @@
 
 ## 2026-06-21
 
-- Isolated repository verification from caller-controlled Make startup files,
-  shell state, execution modes, root overrides, Python expressions, and later
-  public recipe replacement.
+- Isolated repository verification from caller-controlled shell state,
+  execution modes, root overrides, Python expressions, and later single-colon
+  public recipe replacement for the sole reviewed Makefile path.
+- Documented caller-supplied later makefiles, later override directives, and startup parse-time Make code as outside the local Make trust boundary.
 - Added adversarial Make authority coverage and bound hosted verification to
   `/usr/bin/make` without changing service behavior or dependencies.
 
