@@ -1211,7 +1211,7 @@ def test_makefile_is_root_independent():
         "40 target/authority cases",
         "hostile literal Python path",
         "8 raw Make-syntax controls",
-        "2 MAKEFILE_LIST rejections",
+        "MAKEFILE_LIST command rejection and safe environment neutralization",
         "2 startup parse-time boundary reproductions",
         "8 later single-colon replacement rejections",
         "8 later double-colon append boundary reproductions",
