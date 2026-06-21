@@ -76,7 +76,7 @@ Helpful reports include:
   Startup makefiles can run parse-time Make functions before the repository
   Makefile rejects them. A caller still controls a bare `python3` through
   `PATH`; use an explicit reviewed interpreter path for exact local
-  reproduction.
+  reproduction. The selected interpreter runs with isolated startup state.
 - CodeQL analyzes actions, Python, and first-party JavaScript. Only the used
   vendored Bootstrap 2.1.0 source is excluded, and its exact header and digest
   are contract-checked. A separate pinned job audits the resolved production

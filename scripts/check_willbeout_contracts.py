@@ -1197,9 +1197,10 @@ def test_makefile_is_root_independent():
         "/usr/bin/find '$(REPOSITORY_ROOT_LITERAL)'" in makefile,
         "Makefile cleanup must stay inside the repository",
     )
+    assert_true("-I -B" in makefile, "Python gates must ignore ambient startup state")
     assert_true(
-        "cd '$(REPOSITORY_ROOT_LITERAL)'" in makefile and "test_modern_runtime.py" in makefile,
-        "runtime tests must execute from the repository root",
+        "sys.path.insert(0, path)" in makefile and "test_modern_runtime.py" in makefile,
+        "runtime tests must load the reviewed repository explicitly under isolated Python",
     )
     assert_true(
         MAKE_AUTHORITY_SCRIPT.is_file() and MAKE_AUTHORITY_SCRIPT.stat().st_mode & 0o111,
@@ -1215,6 +1216,7 @@ def test_makefile_is_root_independent():
         "8 later single-colon replacement rejections",
         "8 later double-colon append boundary reproductions",
         "later override fake-shell boundary reproduction",
+        "isolated Python startup",
         "MAKE_BIN=${MAKE_BIN:-/usr/bin/make}",
         "cleanup containment",
         "10 mode rejections",

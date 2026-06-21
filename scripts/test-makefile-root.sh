@@ -217,6 +217,18 @@ rm -f "$PATH_LOG"
 (cd "$CONTROL_DIR" && PATH="$TEMP_ROOT:/usr/bin:/bin" WILLBEOUT_COMMAND_LOG="$PATH_LOG" make_run --no-print-directory -f "$MAKEFILE" lint) >/dev/null 2>&1
 [ -s "$PATH_LOG" ]
 
+grep -Fq '|-I -B -m py_compile' "$PATH_LOG"
+STARTUP_DIR="$TEMP_ROOT/python-startup"
+STARTUP_MARKER="$TEMP_ROOT/python-startup-ran"
+mkdir -p "$STARTUP_DIR"
+cat >"$STARTUP_DIR/sitecustomize.py" <<'PYTHON_STARTUP'
+import os
+from pathlib import Path
+Path(os.environ["WILLBEOUT_STARTUP_MARKER"]).touch()
+PYTHON_STARTUP
+(cd "$ROOT_DIR" && PYTHONPATH="$STARTUP_DIR" WILLBEOUT_STARTUP_MARKER="$STARTUP_MARKER" make_run --no-print-directory -f "$ROOT_DIR/Makefile" PYTHON=/usr/bin/python3 lint) >/dev/null 2>&1
+[ ! -e "$STARTUP_MARKER" ]
+
 if (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" make_run --no-print-directory -f "$MAKEFILE" MAKEFLAGS=-n check) >"$TEMP_ROOT/flags.out" 2>&1; then exit 1; fi
 grep -Fq 'MAKEFLAGS must not be overridden' "$TEMP_ROOT/flags.out"
 for flag in -n --just-print --dry-run --recon -t --touch -q --question -i --ignore-errors; do
@@ -230,4 +242,4 @@ require_text AGENTS.md 'Caller-supplied later makefiles, including double-colon 
 require_text CHANGES.md 'Documented caller-supplied later makefiles, later override directives, and startup parse-time Make code as outside the local Make trust boundary.'
 require_text docs/plans/2026-06-21-make-authority-isolation.md 'Startup makefiles can run parse-time Make functions before the repository Makefile rejects them.'
 
-printf '%s\n' 'Make authority tests passed: 40 target/authority cases, hostile literal Python path, 8 raw Make-syntax controls, 2 MAKEFILE_LIST rejections, 2 startup parse-time boundary reproductions, 8 later single-colon replacement rejections, 8 later double-colon append boundary reproductions, later root/Python and non-override shell protection, later override fake-shell boundary reproduction, PATH-Python boundary control, cleanup containment, caller MAKEFLAGS rejection, and 10 mode rejections'
+printf '%s\n' 'Make authority tests passed: 40 target/authority cases, hostile literal Python path, 8 raw Make-syntax controls, 2 MAKEFILE_LIST rejections, 2 startup parse-time boundary reproductions, 8 later single-colon replacement rejections, 8 later double-colon append boundary reproductions, later root/Python and non-override shell protection, later override fake-shell boundary reproduction, isolated Python startup, PATH-Python boundary control, cleanup containment, caller MAKEFLAGS rejection, and 10 mode rejections'

@@ -7,6 +7,7 @@ CHECKOUT_BLOCK = "\n".join(("      - name: Check out repository", f"        uses
 def top_level_key(line):
     if not line or line[0].isspace() or line.lstrip().startswith("#"): return None
     stripped=line.rstrip()
+    if stripped[0] in "?{}[]*&!|>": return "<unsupported-top-level-key-syntax>"
     if stripped.startswith(("'", '"')):
         quote=stripped[0]
         index=1
@@ -56,6 +57,7 @@ def validate(workflow):
     if len(re.findall(r"^  workflow_dispatch:$",workflow,re.MULTILINE))!=1: errors.append("allow manual dispatch exactly once")
     keys=top_level_keys(workflow)
     if keys.count("<unsupported-escaped-top-level-key>"): errors.append("not use escaped quoted top-level workflow keys")
+    if keys.count("<unsupported-top-level-key-syntax>"): errors.append("not use explicit, flow, alias, or tagged top-level workflow keys")
     if any(key.lower()=="permissions" and key!="permissions" for key in keys): errors.append("use the canonical lowercase permissions key")
     if keys.count("permissions")!=1: errors.append("declare workflow permissions exactly once")
     if top_level_mapping_entries(workflow,"permissions") != ["  contents: read"]: errors.append("use only read-only contents permission")

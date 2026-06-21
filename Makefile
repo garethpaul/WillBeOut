@@ -71,15 +71,15 @@ clean::
 	/usr/bin/find '$(REPOSITORY_ROOT_LITERAL)' -type d -name '__pycache__' -prune -exec /bin/rm -rf {} +
 
 lint::
-	PYTHONDONTWRITEBYTECODE=1 '$(REPOSITORY_PYTHON_LITERAL)' -m py_compile '$(REPOSITORY_ROOT_LITERAL)/scripts/check_willbeout_contracts.py' '$(REPOSITORY_ROOT_LITERAL)/scripts/dependency_lock_contract.py' '$(REPOSITORY_ROOT_LITERAL)/scripts/test_dependency_lock_contract.py' '$(REPOSITORY_ROOT_LITERAL)/__init__.py' '$(REPOSITORY_ROOT_LITERAL)/attendees.py' '$(REPOSITORY_ROOT_LITERAL)/auth.py' '$(REPOSITORY_ROOT_LITERAL)/base.py' '$(REPOSITORY_ROOT_LITERAL)/cal.py' '$(REPOSITORY_ROOT_LITERAL)/database.py' '$(REPOSITORY_ROOT_LITERAL)/events.py' '$(REPOSITORY_ROOT_LITERAL)/facebook.py' '$(REPOSITORY_ROOT_LITERAL)/facebook_client.py' '$(REPOSITORY_ROOT_LITERAL)/messages.py' '$(REPOSITORY_ROOT_LITERAL)/mobile.py' '$(REPOSITORY_ROOT_LITERAL)/prettydate.py' '$(REPOSITORY_ROOT_LITERAL)/session.py' '$(REPOSITORY_ROOT_LITERAL)/votes.py'
+	'$(REPOSITORY_PYTHON_LITERAL)' -I -B -m py_compile '$(REPOSITORY_ROOT_LITERAL)/scripts/check_willbeout_contracts.py' '$(REPOSITORY_ROOT_LITERAL)/scripts/dependency_lock_contract.py' '$(REPOSITORY_ROOT_LITERAL)/scripts/test_dependency_lock_contract.py' '$(REPOSITORY_ROOT_LITERAL)/__init__.py' '$(REPOSITORY_ROOT_LITERAL)/attendees.py' '$(REPOSITORY_ROOT_LITERAL)/auth.py' '$(REPOSITORY_ROOT_LITERAL)/base.py' '$(REPOSITORY_ROOT_LITERAL)/cal.py' '$(REPOSITORY_ROOT_LITERAL)/database.py' '$(REPOSITORY_ROOT_LITERAL)/events.py' '$(REPOSITORY_ROOT_LITERAL)/facebook.py' '$(REPOSITORY_ROOT_LITERAL)/facebook_client.py' '$(REPOSITORY_ROOT_LITERAL)/messages.py' '$(REPOSITORY_ROOT_LITERAL)/mobile.py' '$(REPOSITORY_ROOT_LITERAL)/prettydate.py' '$(REPOSITORY_ROOT_LITERAL)/session.py' '$(REPOSITORY_ROOT_LITERAL)/votes.py'
 
 test::
-	PYTHONDONTWRITEBYTECODE=1 '$(REPOSITORY_PYTHON_LITERAL)' '$(REPOSITORY_ROOT_LITERAL)/scripts/check_willbeout_contracts.py'
-	cd '$(REPOSITORY_ROOT_LITERAL)' && PYTHONDONTWRITEBYTECODE=1 '$(REPOSITORY_PYTHON_LITERAL)' -m unittest -v test_modern_runtime.py
+	'$(REPOSITORY_PYTHON_LITERAL)' -I -B -c 'import runpy, sys; path, script = sys.argv[1:3]; sys.path.insert(0, path); sys.argv = [script]; runpy.run_path(script, run_name="__main__")' '$(REPOSITORY_ROOT_LITERAL)/scripts' '$(REPOSITORY_ROOT_LITERAL)/scripts/check_willbeout_contracts.py'
+	'$(REPOSITORY_PYTHON_LITERAL)' -I -B -c 'import runpy, sys; path, script = sys.argv[1:3]; sys.path.insert(0, path); sys.argv = [script]; runpy.run_path(script, run_name="__main__")' '$(REPOSITORY_ROOT_LITERAL)' '$(REPOSITORY_ROOT_LITERAL)/test_modern_runtime.py'
 
 contract-test::
-	PYTHONDONTWRITEBYTECODE=1 '$(REPOSITORY_PYTHON_LITERAL)' '$(REPOSITORY_ROOT_LITERAL)/scripts/test_workflow_contract.py'
-	PYTHONDONTWRITEBYTECODE=1 '$(REPOSITORY_PYTHON_LITERAL)' '$(REPOSITORY_ROOT_LITERAL)/scripts/test_dependency_lock_contract.py'
+	'$(REPOSITORY_PYTHON_LITERAL)' -I -B -c 'import runpy, sys; path, script = sys.argv[1:3]; sys.path.insert(0, path); sys.argv = [script]; runpy.run_path(script, run_name="__main__")' '$(REPOSITORY_ROOT_LITERAL)/scripts' '$(REPOSITORY_ROOT_LITERAL)/scripts/test_workflow_contract.py'
+	'$(REPOSITORY_PYTHON_LITERAL)' -I -B -c 'import runpy, sys; path, script = sys.argv[1:3]; sys.path.insert(0, path); sys.argv = [script]; runpy.run_path(script, run_name="__main__")' '$(REPOSITORY_ROOT_LITERAL)/scripts' '$(REPOSITORY_ROOT_LITERAL)/scripts/test_dependency_lock_contract.py'
 
 build:: lint
 	@/usr/bin/printf '%s\n' 'Python application: no separate build artifact.'

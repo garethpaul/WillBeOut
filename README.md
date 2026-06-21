@@ -92,7 +92,8 @@ The `Procfile` uses the same Python 3 entry point.
 - Public Make targets resolve the repository from the loaded Makefile and
   reject unsafe execution modes, caller-controlled roots or shells for the
   sole reviewed Makefile, later single-colon recipe replacement, and Make
-  expressions in `PYTHON`.
+  expressions in `PYTHON`. Python verification runs isolated from ambient
+  `PYTHONPATH`, user-site packages, and startup hooks.
 - Caller-supplied later makefiles, including double-colon public recipes and later override directives, are outside the local Make trust boundary.
 - Startup makefiles can run parse-time Make functions before the repository
   Makefile rejects them; run the documented commands without extra `-f` files
