@@ -92,6 +92,91 @@ def registered_contract_tests():
     return set()
 
 
+def has_literal_cookie_secret(source):
+    tree = ast.parse(source)
+
+    def is_static_string(node, assignments, before_line, resolving=()):
+        if isinstance(node, ast.Constant):
+            return isinstance(node.value, (str, bytes))
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            return is_static_string(node.left, assignments, before_line, resolving) and is_static_string(
+                node.right, assignments, before_line, resolving
+            )
+        if isinstance(node, ast.JoinedStr):
+            return all(
+                isinstance(value, ast.Constant)
+                or (
+                    isinstance(value, ast.FormattedValue)
+                    and is_static_string(value.value, assignments, before_line, resolving)
+                )
+                for value in node.values
+            )
+        if isinstance(node, ast.Name) and node.id not in resolving:
+            prior = [
+                (line, value)
+                for line, value in assignments.get(node.id, ())
+                if line < before_line
+            ]
+            if prior:
+                line, value = max(prior, key=lambda item: item[0])
+                return is_static_string(value, assignments, line, resolving + (node.id,))
+        return False
+
+    class ScopeCollector(ast.NodeVisitor):
+        def __init__(self):
+            self.assignments = {}
+            self.cookie_keywords = []
+
+        def record_assignment(self, target, value, line):
+            if isinstance(target, ast.Name):
+                self.assignments.setdefault(target.id, []).append((line, value))
+
+        def visit_Assign(self, node):
+            for target in node.targets:
+                self.record_assignment(target, node.value, node.lineno)
+            self.visit(node.value)
+
+        def visit_AnnAssign(self, node):
+            if node.value is not None:
+                self.record_assignment(node.target, node.value, node.lineno)
+                self.visit(node.value)
+
+        def visit_Call(self, node):
+            self.cookie_keywords.extend(
+                keyword for keyword in node.keywords if keyword.arg == "cookie_secret"
+            )
+            self.generic_visit(node)
+
+        def visit_FunctionDef(self, node):
+            return
+
+        def visit_AsyncFunctionDef(self, node):
+            return
+
+        def visit_ClassDef(self, node):
+            return
+
+        def visit_Lambda(self, node):
+            return
+
+    scopes = [tree]
+    scopes.extend(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    )
+    for scope in scopes:
+        collector = ScopeCollector()
+        for statement in scope.body:
+            collector.visit(statement)
+        if any(
+            is_static_string(keyword.value, collector.assignments, keyword.lineno)
+            for keyword in collector.cookie_keywords
+        ):
+            return True
+    return False
+
+
 def test_auth_handler_has_no_stray_non_code_suffix():
     source = AUTH.read_text()
     assert_true("åå" not in source, "auth.py must not contain stray non-code suffixes")
@@ -99,11 +184,34 @@ def test_auth_handler_has_no_stray_non_code_suffix():
 
 def test_cookie_secret_comes_from_configuration():
     source = FACEBOOK.read_text()
-    assert_true("COOKIE_SECRET" in source, "facebook.py must read COOKIE_SECRET from configuration")
+    synthetic_fixture = "Application({}={})".format("cookie_" + "secret", '"synthetic-value"')
+    reassignment_fixture = """
+configured_cookie_secret = cookie_secret or options.cookie_secret
+configured_cookie_secret = f"synthetic-value"
+Application(cookie_secret=configured_cookie_secret)
+"""
+    propagation_fixture = """
+literal_value = "synthetic-value"
+intermediate_value = literal_value
+Application(cookie_secret=intermediate_value)
+"""
     assert_true(
-        'cookie_secret="12oETzKXQAGaYdkG5gEmGeJJFuYh7EQnp2XdTP1o/Vo="' not in source,
-        "facebook.py must not hardcode the Tornado cookie secret",
+        has_literal_cookie_secret(synthetic_fixture),
+        "cookie secret contract fixture must exercise a literal setting",
     )
+    assert_true(
+        has_literal_cookie_secret(reassignment_fixture),
+        "cookie secret contract must follow a static reassignment into the application setting",
+    )
+    assert_true(
+        has_literal_cookie_secret(propagation_fixture),
+        "cookie secret contract must follow static name propagation into the application setting",
+    )
+    assert_true(
+        not has_literal_cookie_secret(source),
+        "facebook.py must not contain a literal Tornado cookie secret",
+    )
+    assert_true("COOKIE_SECRET" in source, "facebook.py must read COOKIE_SECRET from configuration")
     assert_true(
         "configured_cookie_secret = cookie_secret or options.cookie_secret" in source
         and "cookie_secret=configured_cookie_secret" in source
@@ -1089,9 +1197,10 @@ def test_makefile_is_root_independent():
         "/usr/bin/find '$(REPOSITORY_ROOT_LITERAL)'" in makefile,
         "Makefile cleanup must stay inside the repository",
     )
+    assert_true("-I -B" in makefile, "Python gates must ignore ambient startup state")
     assert_true(
-        "cd '$(REPOSITORY_ROOT_LITERAL)'" in makefile and "test_modern_runtime.py" in makefile,
-        "runtime tests must execute from the repository root",
+        "sys.path.insert(0, path)" in makefile and "test_modern_runtime.py" in makefile,
+        "runtime tests must load the reviewed repository explicitly under isolated Python",
     )
     assert_true(
         MAKE_AUTHORITY_SCRIPT.is_file() and MAKE_AUTHORITY_SCRIPT.stat().st_mode & 0o111,
@@ -1103,8 +1212,12 @@ def test_makefile_is_root_independent():
         "hostile literal Python path",
         "8 raw Make-syntax controls",
         "2 MAKEFILE_LIST rejections",
-        "2 startup-boundary cases",
-        "8 later recipe-replacement rejections",
+        "2 startup parse-time boundary reproductions",
+        "8 later single-colon replacement rejections",
+        "8 later double-colon append boundary reproductions",
+        "later override fake-shell boundary reproduction",
+        "isolated Python startup",
+        "MAKE_BIN=${MAKE_BIN:-/usr/bin/make}",
         "cleanup containment",
         "10 mode rejections",
     ):
@@ -1112,6 +1225,22 @@ def test_makefile_is_root_independent():
             contract in authority_source,
             "Make authority harness must retain {0}".format(contract),
         )
+    docs_text = "\n".join(
+        (ROOT / path).read_text()
+        for path in (
+            "README.md",
+            "SECURITY.md",
+            "AGENTS.md",
+            "CHANGES.md",
+            "docs/plans/2026-06-21-make-authority-isolation.md",
+        )
+    )
+    for phrase in (
+        "Caller-supplied later makefiles, including double-colon public recipes and later override directives, are outside the local Make trust boundary.",
+        "Startup makefiles can run parse-time Make functions before the repository Makefile rejects them.",
+        "Documented caller-supplied later makefiles, later override directives, and startup parse-time Make code as outside the local Make trust boundary.",
+    ):
+        assert_true(phrase in docs_text, "Make boundary documentation must include {0!r}".format(phrase))
 
 
 def assert_completed_plan(path, label):

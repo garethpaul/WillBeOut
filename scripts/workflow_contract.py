@@ -4,6 +4,49 @@ CHECKOUT_ACTION = "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10"
 SETUP_ACTION = "actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405"
 CHECKOUT_BLOCK = "\n".join(("      - name: Check out repository", f"        uses: {CHECKOUT_ACTION} # v6.0.3", "        with:", "          persist-credentials: false"))
 
+def top_level_key(line):
+    if not line or line[0].isspace() or line.lstrip().startswith("#"): return None
+    stripped=line.rstrip()
+    if stripped[0] in "?{}[]*&!|>": return "<unsupported-top-level-key-syntax>"
+    if stripped.startswith(("'", '"')):
+        quote=stripped[0]
+        index=1
+        value=[]
+        while index < len(stripped):
+            char=stripped[index]
+            if quote=="'" and char=="'":
+                if index+1 < len(stripped) and stripped[index+1]=="'":
+                    value.append("'")
+                    index+=2
+                    continue
+                rest=stripped[index+1:].lstrip()
+                return "".join(value) if rest.startswith(":") else None
+            if quote=='"' and char=='"':
+                rest=stripped[index+1:].lstrip()
+                return "".join(value) if rest.startswith(":") else None
+            if quote=='"' and char=="\\":
+                return "<unsupported-escaped-top-level-key>"
+            value.append(char)
+            index+=1
+        return None
+    match=re.match(r"^([^:#][^:]*?)\s*:",stripped)
+    if not match: return None
+    return match.group(1).strip()
+
+def top_level_keys(workflow):
+    return [key for key in (top_level_key(line) for line in workflow.splitlines()) if key is not None]
+
+def top_level_mapping_entries(workflow, name):
+    lines=workflow.splitlines()
+    starts=[index for index,line in enumerate(lines) if top_level_key(line)==name]
+    if len(starts)!=1: return None
+    entries=[]
+    for line in lines[starts[0]+1:]:
+        if not line.strip() or line.lstrip().startswith("#"): continue
+        if line and not line[0].isspace(): break
+        entries.append(line)
+    return entries
+
 def validate(workflow):
     errors=[]
     production_install="python -m pip install --disable-pip-version-check --require-hashes -r requirements.lock"
@@ -12,9 +55,12 @@ def validate(workflow):
     if "  push:\n    branches:\n      - master" not in workflow: errors.append("validate pushes to master")
     if len(re.findall(r"^  pull_request:$",workflow,re.MULTILINE))!=1: errors.append("validate pull requests exactly once")
     if len(re.findall(r"^  workflow_dispatch:$",workflow,re.MULTILINE))!=1: errors.append("allow manual dispatch exactly once")
-    if len(re.findall(r"^permissions:$",workflow,re.MULTILINE))!=1: errors.append("declare workflow permissions exactly once")
-    if not re.search(r"^permissions:\n  contents: read$",workflow,re.MULTILINE): errors.append("use read-only contents permission")
-    if re.search(r"^[ \t]+[A-Za-z-]+:[ \t]+write[ \t]*$",workflow,re.MULTILINE): errors.append("not request write permissions")
+    keys=top_level_keys(workflow)
+    if keys.count("<unsupported-escaped-top-level-key>"): errors.append("not use escaped quoted top-level workflow keys")
+    if keys.count("<unsupported-top-level-key-syntax>"): errors.append("not use explicit, flow, alias, or tagged top-level workflow keys")
+    if any(key.lower()=="permissions" and key!="permissions" for key in keys): errors.append("use the canonical lowercase permissions key")
+    if keys.count("permissions")!=1: errors.append("declare workflow permissions exactly once")
+    if top_level_mapping_entries(workflow,"permissions") != ["  contents: read"]: errors.append("use only read-only contents permission")
     if len(re.findall(r"^  cancel-in-progress: true$",workflow,re.MULTILINE))!=1: errors.append("cancel superseded runs exactly once")
     if len(re.findall(r"^    runs-on: ubuntu-24\.04$",workflow,re.MULTILINE))!=2: errors.append("use the fixed Ubuntu runner for both jobs")
     if len(re.findall(r"^    timeout-minutes: 5$",workflow,re.MULTILINE))!=2: errors.append("bound both jobs to five minutes")
