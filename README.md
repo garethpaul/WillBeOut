@@ -83,14 +83,17 @@ The `Procfile` uses the same Python 3 entry point.
 
 ## Testing and Verification
 
-- `make lint` compiles every first-party Python module and the static checker.
-- `make test` runs 20 static contracts and the executable no-network runtime
+- `/usr/bin/make lint` compiles every first-party Python module and the static checker.
+- `/usr/bin/make test` runs 28 static contracts and the executable no-network runtime
   tests.
-- `make contract-test` rejects workflow policy regressions.
-- `make build`, `make verify`, and `make check` provide stable repository gates.
-- `make check` removes Python bytecode before and after verification.
+- `/usr/bin/make contract-test` rejects workflow and dependency-lock policy regressions.
+- `/usr/bin/make build`, `/usr/bin/make verify`, and `/usr/bin/make check` provide stable repository gates.
+- `/usr/bin/make check` removes Python bytecode before and after verification.
+- Public Make targets resolve the repository from the loaded Makefile and
+  reject startup injection, unsafe execution modes, caller-controlled roots or
+  shells, later recipe replacement, and Make expressions in `PYTHON`.
 
-GitHub Actions installs the exact lock with `--require-hashes` and runs `make check` on Python 3.10,
+GitHub Actions installs the exact lock with `--require-hashes` and runs `/usr/bin/make check` on Python 3.10,
 3.12, and 3.14 under read-only permissions on Ubuntu 24.04. A separate Python
 3.12 job runs the pinned resolved dependency audit. CodeQL analyzes Actions,
 Python, and first-party JavaScript; only reviewed vendored Bootstrap is
@@ -99,6 +102,9 @@ excluded.
 Hosted verification does not contact Meta or MySQL. Live OAuth, Graph friend
 access, schema compatibility, and deployed database behavior require an
 isolated credentialed smoke test.
+
+The verification authority boundary and adversarial regression matrix are
+documented in `docs/plans/2026-06-21-make-authority-isolation.md`.
 
 ## Security Contracts
 

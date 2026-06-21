@@ -38,6 +38,7 @@ VOTE_SUGGESTION_BINDING_PLAN = ROOT / "docs" / "plans" / "2026-06-16-vote-sugges
 TORNADO_SECURITY_UPDATE_PLAN = ROOT / "docs" / "plans" / "2026-06-16-tornado-6.5.7-security-update.md"
 AVAILABILITY_PAYLOAD_PLAN = ROOT / "docs" / "plans" / "2026-06-16-availability-payload-validation.md"
 AVAILABILITY_TRANSACTION_PLAN = ROOT / "docs" / "plans" / "2026-06-17-availability-replacement-transaction.md"
+MAKE_AUTHORITY_PLAN = ROOT / "docs" / "plans" / "2026-06-21-make-authority-isolation.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -59,6 +60,7 @@ CODEQL_WORKFLOW = ROOT / ".github" / "workflows" / "codeql.yml"
 CODEQL_CONFIG = ROOT / ".github" / "codeql-config.yml"
 GITIGNORE = ROOT / ".gitignore"
 MAKEFILE = ROOT / "Makefile"
+MAKE_AUTHORITY_SCRIPT = ROOT / "scripts" / "test-makefile-root.sh"
 EVENT_TEMPLATE = ROOT / "templates" / "event.html"
 EVENTS_TEMPLATE = ROOT / "templates" / "events.html"
 BASE_TEMPLATE = ROOT / "templates" / "base.html"
@@ -947,7 +949,10 @@ def test_ci_workflow_runs_make_check():
     makefile = (ROOT / "Makefile").read_text()
     assert_true("test_modern_runtime.py" in makefile, "Makefile must run executable modern runtime tests")
     assert_true("PYTHON2" not in makefile, "Makefile must not retain the retired Python 2 path")
-    assert_true("WORKFLOW_CONTRACT_SCRIPT" in makefile, "Makefile must run workflow mutations")
+    assert_true(
+        "'$(REPOSITORY_ROOT_LITERAL)/scripts/test_workflow_contract.py'" in makefile,
+        "Makefile must run rooted workflow mutations",
+    )
 
 
 def test_modern_runtime_dependency_and_api_contracts():
@@ -1046,32 +1051,67 @@ def test_makefile_is_root_independent():
     makefile = MAKEFILE.read_text()
     makefile_lines = set(makefile.splitlines())
 
+    for contract in (
+        ".DEFAULT_GOAL := check",
+        ".SECONDEXPANSION:",
+        "PYTHON ?= python3",
+        "override PYTHON := $(value PYTHON)",
+        "override SHELL := /bin/sh",
+        "override .SHELLFLAGS := -c",
+        "override MAKEFILES :=",
+        "ifneq ($(origin MAKEFILE_LIST),file)",
+        "export ROOT",
+        "root-test::",
+        "\t/bin/sh '$(REPOSITORY_ROOT_LITERAL)/scripts/test-makefile-root.sh'",
+        "verify:: root-test lint test contract-test build",
+    ):
+        assert_true(
+            contract in makefile_lines,
+            "Makefile authority contract is missing {0!r}".format(contract),
+        )
+    assert_true("MAKEFLAGS must not be overridden" in makefile, "Makefile must reject caller MAKEFLAGS")
+    assert_true("MAKEFILES must be empty" in makefile, "Makefile must reject startup files")
+    assert_true("MAKEFILE_LIST must not be overridden" in makefile, "Makefile must reject Makefile-list replacement")
+    assert_true("PYTHON must be a literal executable path" in makefile, "Makefile must reject Python Make syntax")
     assert_true(
-        "override ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))" in makefile_lines,
-        "Makefile must protect the repository root",
-    )
-    assert_true("PYTHON ?= python3" in makefile_lines, "Makefile must preserve the Python command override")
-    assert_true(
-        '\tfind "$(ROOT)" -type f \\( -name \'*.pyc\' -o -name \'*.pyo\' \\) -delete' in makefile_lines,
-        "Makefile cleanup must remove Python bytecode from the repository root",
-    )
-    assert_true(
-        '\tfind "$(ROOT)" -type d -name \'__pycache__\' -prune -exec rm -rf {} +' in makefile_lines,
-        "Makefile cleanup must remove Python cache directories from the repository root",
-    )
-    assert_true(
-        "CHECK_SCRIPT := $(ROOT)/scripts/check_willbeout_contracts.py" in makefile,
+        "'$(REPOSITORY_ROOT_LITERAL)/scripts/check_willbeout_contracts.py'" in makefile,
         "Makefile must use the rooted checker path",
     )
     assert_true(
-        '$(MAKE) -f "$(ROOT)/Makefile" clean' in makefile,
-        "recursive cleanup must use the rooted Makefile",
+        "'$(REPOSITORY_ROOT_LITERAL)/scripts/test_workflow_contract.py'" in makefile,
+        "Makefile must use the rooted workflow mutation path",
     )
     assert_true(
-        'cd "$(ROOT)" && PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest -v test_modern_runtime.py'
-        in makefile,
+        "'$(REPOSITORY_ROOT_LITERAL)/scripts/test_dependency_lock_contract.py'" in makefile,
+        "Makefile must use the rooted lock mutation path",
+    )
+    assert_true(
+        "/usr/bin/find '$(REPOSITORY_ROOT_LITERAL)'" in makefile,
+        "Makefile cleanup must stay inside the repository",
+    )
+    assert_true(
+        "cd '$(REPOSITORY_ROOT_LITERAL)'" in makefile and "test_modern_runtime.py" in makefile,
         "runtime tests must execute from the repository root",
     )
+    assert_true(
+        MAKE_AUTHORITY_SCRIPT.is_file() and MAKE_AUTHORITY_SCRIPT.stat().st_mode & 0o111,
+        "Make authority harness must exist and be executable",
+    )
+    authority_source = MAKE_AUTHORITY_SCRIPT.read_text()
+    for contract in (
+        "40 target/authority cases",
+        "hostile literal Python path",
+        "8 raw Make-syntax controls",
+        "2 MAKEFILE_LIST rejections",
+        "2 startup-boundary cases",
+        "8 later recipe-replacement rejections",
+        "cleanup containment",
+        "10 mode rejections",
+    ):
+        assert_true(
+            contract in authority_source,
+            "Make authority harness must retain {0}".format(contract),
+        )
 
 
 def assert_completed_plan(path, label):
@@ -1107,6 +1147,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(TORNADO_SECURITY_UPDATE_PLAN, "Tornado 6.5.7 security update")
     assert_completed_plan(AVAILABILITY_PAYLOAD_PLAN, "availability payload validation")
     assert_completed_plan(AVAILABILITY_TRANSACTION_PLAN, "availability replacement transaction")
+    assert_completed_plan(MAKE_AUTHORITY_PLAN, "Make authority isolation")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
