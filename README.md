@@ -98,6 +98,11 @@ The `Procfile` uses the same Python 3 entry point.
 - Startup makefiles can run parse-time Make functions before the repository
   Makefile rejects them; run the documented commands without extra `-f` files
   or `MAKEFILES` when collecting local validation evidence.
+- GNU Make 4.4 expands Make syntax in a command-line `ROOT` value while
+  processing simultaneous command-line overrides, before this Makefile can
+  replace `ROOT`. Do not pass Make expressions in `ROOT`; that pre-load
+  expression remains caller authority. Environment `ROOT` values are still
+  neutralized without expansion.
 
 GitHub Actions installs the exact lock with `--require-hashes` and runs `/usr/bin/make check` on Python 3.10,
 3.12, and 3.14 under read-only permissions on Ubuntu 24.04. A separate Python

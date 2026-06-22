@@ -77,6 +77,10 @@ Helpful reports include:
   Makefile rejects them. A caller still controls a bare `python3` through
   `PATH`; use an explicit reviewed interpreter path for exact local
   reproduction. The selected interpreter runs with isolated startup state.
+  GNU Make 4.4 can also expand Make syntax in a command-line `ROOT` value while
+  processing simultaneous command-line overrides, before the checked-in
+  Makefile can replace it. Treat that pre-load expression as caller authority;
+  environment `ROOT` values remain neutralized without expansion.
 - CodeQL analyzes actions, Python, and first-party JavaScript. Only the used
   vendored Bootstrap 2.1.0 source is excluded, and its exact header and digest
   are contract-checked. A separate pinned job audits the resolved production

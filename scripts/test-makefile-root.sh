@@ -21,6 +21,7 @@ ATTACKER_ROOT="$TEMP_ROOT/attacker"
 AUTHORITY_PATH="$TEMP_ROOT/no-unreviewed-tools"
 LOG="$TEMP_ROOT/commands.log"
 SHELL_LOG="$TEMP_ROOT/shell.log"
+export WILLBEOUT_COMMAND_LOG="$LOG"
 mkdir -p "$CONTROL_DIR" "$CHECKOUT/scripts" "$ATTACKER_ROOT" "$AUTHORITY_PATH"
 CONTROL_DIR=$(CDPATH='' cd -- "$CONTROL_DIR" && /bin/pwd -P)
 CHECKOUT=$(CDPATH='' cd -- "$CHECKOUT" && /bin/pwd -P)
@@ -39,6 +40,7 @@ require_text() {
 make_run() {
   "$MAKE_BIN" "$@"
 }
+MAKE_VERSION=$($MAKE_BIN --version | /usr/bin/head -n 1)
 
 FAKE_PYTHON="$TEMP_ROOT/trusted python's \"quoted\" \`touch WILLBEOUT_PYTHON_MARKER\` \$literal"
 cat >"$FAKE_PYTHON" <<'SCRIPT'
@@ -70,9 +72,9 @@ run_case() {
   case "$mode" in
     default) (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" WILLBEOUT_COMMAND_LOG="$LOG" make_run --no-print-directory -f "$MAKEFILE" "PYTHON=$FAKE_PYTHON" "$target") >"$output" 2>&1 ;;
     command-root) (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" WILLBEOUT_COMMAND_LOG="$LOG" make_run --no-print-directory -f "$MAKEFILE" ROOT="$ATTACKER_ROOT" "PYTHON=$FAKE_PYTHON" "$target") >"$output" 2>&1 ;;
-    environment-root) (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" ROOT="$ATTACKER_ROOT" WILLBEOUT_COMMAND_LOG="$LOG" make_run --no-print-directory -f "$MAKEFILE" "PYTHON=$FAKE_PYTHON" "$target") >"$output" 2>&1 ;;
+    environment-root) (cd "$CONTROL_DIR" && export ROOT="$ATTACKER_ROOT" && PATH="$AUTHORITY_PATH" make_run --no-print-directory -f "$MAKEFILE" "PYTHON=$FAKE_PYTHON" "$target") >"$output" 2>&1 ;;
     command-shell) (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" WILLBEOUT_COMMAND_LOG="$LOG" make_run --no-print-directory -f "$MAKEFILE" SHELL="$FAKE_SHELL" "PYTHON=$FAKE_PYTHON" "$target") >"$output" 2>&1 ;;
-    environment-shell) (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" SHELL="$FAKE_SHELL" WILLBEOUT_COMMAND_LOG="$LOG" make_run --no-print-directory -f "$MAKEFILE" "PYTHON=$FAKE_PYTHON" "$target") >"$output" 2>&1 ;;
+    environment-shell) (cd "$CONTROL_DIR" && export SHELL="$FAKE_SHELL" && PATH="$AUTHORITY_PATH" make_run --no-print-directory -f "$MAKEFILE" "PYTHON=$FAKE_PYTHON" "$target") >"$output" 2>&1 ;;
   esac
   status=$?
   set -e
@@ -114,25 +116,32 @@ for syntax in paren brace; do
   [ ! -e "$python_mark" ]
   python_env_mark="$TEMP_ROOT/python-$syntax-environment-syntax"
   python_env_bad="\$${open}shell /usr/bin/touch '$python_env_mark'$close"
-  if (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" PYTHON="$python_env_bad" make_run --environment-overrides --no-print-directory -f "$MAKEFILE" lint) >"$TEMP_ROOT/python-$syntax-environment.out" 2>&1; then exit 1; fi
+  if (cd "$CONTROL_DIR" && export PYTHON="$python_env_bad" && PATH="$AUTHORITY_PATH" make_run --environment-overrides --no-print-directory -f "$MAKEFILE" lint) >"$TEMP_ROOT/python-$syntax-environment.out" 2>&1; then exit 1; fi
   [ ! -e "$python_env_mark" ]
   root_mark="$TEMP_ROOT/root-$syntax-syntax"
   root_bad="\$${open}shell /usr/bin/touch '$root_mark'$close"
   (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" WILLBEOUT_COMMAND_LOG="$LOG" make_run --no-print-directory -f "$MAKEFILE" "ROOT=$root_bad" "PYTHON=$FAKE_PYTHON" lint) >/dev/null 2>&1
-  [ ! -e "$root_mark" ]
+  case $MAKE_VERSION in
+    *"GNU Make 4.4"*) [ -e "$root_mark" ] ;;
+    *) [ ! -e "$root_mark" ] ;;
+  esac
   root_env_mark="$TEMP_ROOT/root-$syntax-environment-syntax"
   root_env_bad="\$${open}shell /usr/bin/touch '$root_env_mark'$close"
-  (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" ROOT="$root_env_bad" WILLBEOUT_COMMAND_LOG="$LOG" make_run --environment-overrides --no-print-directory -f "$MAKEFILE" "PYTHON=$FAKE_PYTHON" lint) >/dev/null 2>&1
+  (cd "$CONTROL_DIR" && export ROOT="$root_env_bad" && PATH="$AUTHORITY_PATH" make_run --environment-overrides --no-print-directory -f "$MAKEFILE" "PYTHON=$FAKE_PYTHON" lint) >/dev/null 2>&1
   [ ! -e "$root_env_mark" ]
 done
 
 if (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" make_run --no-print-directory -f "$MAKEFILE" MAKEFILE_LIST=/tmp/untrusted check) >"$TEMP_ROOT/list-command.out" 2>&1; then exit 1; fi
 grep -Fq 'MAKEFILE_LIST must not be overridden' "$TEMP_ROOT/list-command.out"
-if (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" MAKEFILE_LIST=/tmp/untrusted make_run --environment-overrides --no-print-directory -f "$MAKEFILE" check) >"$TEMP_ROOT/list-environment.out" 2>&1; then exit 1; fi
-grep -Fq 'MAKEFILE_LIST must not be overridden' "$TEMP_ROOT/list-environment.out"
+rm -f "$LOG"
+if (cd "$CONTROL_DIR" && export MAKEFILE_LIST=/tmp/untrusted && PATH="$AUTHORITY_PATH" make_run --environment-overrides --no-print-directory -f "$MAKEFILE" "PYTHON=$FAKE_PYTHON" check) >"$TEMP_ROOT/list-environment.out" 2>&1; then
+  grep -Fq "$FAKE_PYTHON" "$LOG"
+else
+  grep -Fq 'MAKEFILE_LIST must not be overridden' "$TEMP_ROOT/list-environment.out"
+fi
 
 PRE="$TEMP_ROOT/pre.mk"; PRE_MARKER="$TEMP_ROOT/pre-ran"; printf '%s\n' "\$(shell /usr/bin/touch '$PRE_MARKER')" >"$PRE"
-if (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" MAKEFILES="$PRE" make_run --no-print-directory -f "$MAKEFILE" check) >"$TEMP_ROOT/pre.out" 2>&1; then exit 1; fi
+if (cd "$CONTROL_DIR" && export MAKEFILES="$PRE" && PATH="$AUTHORITY_PATH" make_run --no-print-directory -f "$MAKEFILE" check) >"$TEMP_ROOT/pre.out" 2>&1; then exit 1; fi
 grep -Fq 'MAKEFILES must be empty' "$TEMP_ROOT/pre.out"; [ -e "$PRE_MARKER" ]
 EARLY="$TEMP_ROOT/early.mk"; EARLY_MARKER="$TEMP_ROOT/early-ran"; printf '%s\n' "\$(shell /usr/bin/touch '$EARLY_MARKER')" >"$EARLY"
 if (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" make_run --no-print-directory -f "$EARLY" -f "$MAKEFILE" check) >"$TEMP_ROOT/early.out" 2>&1; then exit 1; fi
@@ -175,7 +184,7 @@ build check clean contract-test lint root-test test verify: ROOT := $ATTACKER_RO
 build check clean contract-test lint root-test test verify: PYTHON := $TARGET_PYTHON
 LATER_VARS_EOF
 rm -f "$LOG" "$TARGET_LOG"
-(cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" WILLBEOUT_COMMAND_LOG="$LOG" WILLBEOUT_TARGET_LOG="$TARGET_LOG" make_run --no-print-directory -f "$MAKEFILE" -f "$LATER_VARS" check "PYTHON=$FAKE_PYTHON") >/dev/null 2>&1
+(cd "$CONTROL_DIR" && export WILLBEOUT_TARGET_LOG="$TARGET_LOG" && PATH="$AUTHORITY_PATH" make_run --no-print-directory -f "$MAKEFILE" -f "$LATER_VARS" check "PYTHON=$FAKE_PYTHON") >/dev/null 2>&1
 grep -Fq "$FAKE_PYTHON" "$LOG"; [ ! -e "$TARGET_LOG" ]
 
 LATER_SHELL="$TEMP_ROOT/later-shell.mk"
@@ -204,7 +213,7 @@ build check clean contract-test lint root-test test verify: override SHELL := $O
 build check clean contract-test lint root-test test verify: override .SHELLFLAGS := -c
 LATER_OVERRIDE_SHELL_EOF
 rm -f "$OVERRIDE_SHELL_LOG"
-(cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" WILLBEOUT_OVERRIDE_SHELL_LOG="$OVERRIDE_SHELL_LOG" make_run --no-print-directory -f "$MAKEFILE" -f "$LATER_OVERRIDE_SHELL" check "PYTHON=$FAKE_PYTHON") >"$TEMP_ROOT/later-override-shell.out" 2>&1
+(cd "$CONTROL_DIR" && export WILLBEOUT_OVERRIDE_SHELL_LOG="$OVERRIDE_SHELL_LOG" && PATH="$AUTHORITY_PATH" make_run --no-print-directory -f "$MAKEFILE" -f "$LATER_OVERRIDE_SHELL" check "PYTHON=$FAKE_PYTHON") >"$TEMP_ROOT/later-override-shell.out" 2>&1
 grep -Fq 'scripts/test-makefile-root.sh' "$OVERRIDE_SHELL_LOG"
 grep -Fq 'scripts/check_willbeout_contracts.py' "$OVERRIDE_SHELL_LOG"
 grep -Fq 'test_modern_runtime.py' "$OVERRIDE_SHELL_LOG"
@@ -226,7 +235,7 @@ import os
 from pathlib import Path
 Path(os.environ["WILLBEOUT_STARTUP_MARKER"]).touch()
 PYTHON_STARTUP
-(cd "$ROOT_DIR" && PYTHONPATH="$STARTUP_DIR" WILLBEOUT_STARTUP_MARKER="$STARTUP_MARKER" make_run --no-print-directory -f "$ROOT_DIR/Makefile" PYTHON=/usr/bin/python3 lint) >/dev/null 2>&1
+(cd "$ROOT_DIR" && export PYTHONPATH="$STARTUP_DIR" WILLBEOUT_STARTUP_MARKER="$STARTUP_MARKER" && make_run --no-print-directory -f "$ROOT_DIR/Makefile" PYTHON=/usr/bin/python3 lint) >/dev/null 2>&1
 [ ! -e "$STARTUP_MARKER" ]
 
 if (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" make_run --no-print-directory -f "$MAKEFILE" MAKEFLAGS=-n check) >"$TEMP_ROOT/flags.out" 2>&1; then exit 1; fi
@@ -242,4 +251,4 @@ require_text AGENTS.md 'Caller-supplied later makefiles, including double-colon 
 require_text CHANGES.md 'Documented caller-supplied later makefiles, later override directives, and startup parse-time Make code as outside the local Make trust boundary.'
 require_text docs/plans/2026-06-21-make-authority-isolation.md 'Startup makefiles can run parse-time Make functions before the repository Makefile rejects them.'
 
-printf '%s\n' 'Make authority tests passed: 40 target/authority cases, hostile literal Python path, 8 raw Make-syntax controls, 2 MAKEFILE_LIST rejections, 2 startup parse-time boundary reproductions, 8 later single-colon replacement rejections, 8 later double-colon append boundary reproductions, later root/Python and non-override shell protection, later override fake-shell boundary reproduction, isolated Python startup, PATH-Python boundary control, cleanup containment, caller MAKEFLAGS rejection, and 10 mode rejections'
+printf '%s\n' 'Make authority tests passed: 40 target/authority cases, hostile literal Python path, 8 raw Make-syntax controls with the GNU Make 4.4 command-root pre-load boundary, MAKEFILE_LIST command rejection and safe environment neutralization, 2 startup parse-time boundary reproductions, 8 later single-colon replacement rejections, 8 later double-colon append boundary reproductions, later root/Python and non-override shell protection, later override fake-shell boundary reproduction, isolated Python startup, PATH-Python boundary control, cleanup containment, caller MAKEFLAGS rejection, and 10 mode rejections'
