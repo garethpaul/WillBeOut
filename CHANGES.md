@@ -2,6 +2,8 @@
 
 ## 2026-06-21
 
+- Documented and reproduced GNU Make 4.4's command-line `ROOT` pre-load
+  expression boundary without weakening environment-root neutralization.
 - Isolated repository verification from caller-controlled shell state,
   execution modes, root overrides, Python expressions, and later single-colon
   public recipe replacement for the sole reviewed Makefile path.

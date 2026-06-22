@@ -46,6 +46,9 @@
 - Caller-supplied later makefiles, including double-colon public recipes and later override directives, are outside the local Make trust boundary.
 - Startup makefiles can run parse-time Make functions before the repository
   Makefile rejects them.
+- GNU Make 4.4 command-line `ROOT` Make expressions can execute while Make
+  processes simultaneous command-line overrides, before repository
+  neutralization. Treat that pre-load expression as caller authority.
 
 ## PR / change guidance
 

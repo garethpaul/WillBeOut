@@ -1210,7 +1210,7 @@ def test_makefile_is_root_independent():
     for contract in (
         "40 target/authority cases",
         "hostile literal Python path",
-        "8 raw Make-syntax controls",
+        "8 raw Make-syntax controls with the GNU Make 4.4 command-root pre-load boundary",
         "MAKEFILE_LIST command rejection and safe environment neutralization",
         "2 startup parse-time boundary reproductions",
         "8 later single-colon replacement rejections",

@@ -40,6 +40,7 @@ require_text() {
 make_run() {
   "$MAKE_BIN" "$@"
 }
+MAKE_VERSION=$($MAKE_BIN --version | /usr/bin/head -n 1)
 
 FAKE_PYTHON="$TEMP_ROOT/trusted python's \"quoted\" \`touch WILLBEOUT_PYTHON_MARKER\` \$literal"
 cat >"$FAKE_PYTHON" <<'SCRIPT'
@@ -120,7 +121,10 @@ for syntax in paren brace; do
   root_mark="$TEMP_ROOT/root-$syntax-syntax"
   root_bad="\$${open}shell /usr/bin/touch '$root_mark'$close"
   (cd "$CONTROL_DIR" && PATH="$AUTHORITY_PATH" WILLBEOUT_COMMAND_LOG="$LOG" make_run --no-print-directory -f "$MAKEFILE" "ROOT=$root_bad" "PYTHON=$FAKE_PYTHON" lint) >/dev/null 2>&1
-  [ ! -e "$root_mark" ]
+  case $MAKE_VERSION in
+    *"GNU Make 4.4"*) [ -e "$root_mark" ] ;;
+    *) [ ! -e "$root_mark" ] ;;
+  esac
   root_env_mark="$TEMP_ROOT/root-$syntax-environment-syntax"
   root_env_bad="\$${open}shell /usr/bin/touch '$root_env_mark'$close"
   (cd "$CONTROL_DIR" && export ROOT="$root_env_bad" && PATH="$AUTHORITY_PATH" make_run --environment-overrides --no-print-directory -f "$MAKEFILE" "PYTHON=$FAKE_PYTHON" lint) >/dev/null 2>&1
@@ -247,4 +251,4 @@ require_text AGENTS.md 'Caller-supplied later makefiles, including double-colon 
 require_text CHANGES.md 'Documented caller-supplied later makefiles, later override directives, and startup parse-time Make code as outside the local Make trust boundary.'
 require_text docs/plans/2026-06-21-make-authority-isolation.md 'Startup makefiles can run parse-time Make functions before the repository Makefile rejects them.'
 
-printf '%s\n' 'Make authority tests passed: 40 target/authority cases, hostile literal Python path, 8 raw Make-syntax controls, MAKEFILE_LIST command rejection and safe environment neutralization, 2 startup parse-time boundary reproductions, 8 later single-colon replacement rejections, 8 later double-colon append boundary reproductions, later root/Python and non-override shell protection, later override fake-shell boundary reproduction, isolated Python startup, PATH-Python boundary control, cleanup containment, caller MAKEFLAGS rejection, and 10 mode rejections'
+printf '%s\n' 'Make authority tests passed: 40 target/authority cases, hostile literal Python path, 8 raw Make-syntax controls with the GNU Make 4.4 command-root pre-load boundary, MAKEFILE_LIST command rejection and safe environment neutralization, 2 startup parse-time boundary reproductions, 8 later single-colon replacement rejections, 8 later double-colon append boundary reproductions, later root/Python and non-override shell protection, later override fake-shell boundary reproduction, isolated Python startup, PATH-Python boundary control, cleanup containment, caller MAKEFLAGS rejection, and 10 mode rejections'
