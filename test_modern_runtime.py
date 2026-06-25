@@ -444,6 +444,26 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
         self.assertEqual((1, 42), vote_parameters)
         self.assertEqual([], self.graph.request_calls)
 
+    def test_owner_mobile_event_page_binds_votes_to_the_requested_event(self):
+        self.database.event = {
+            "id": 1,
+            "userid": "42",
+            "place": "Office",
+            "f": "2026-06-25 09:00",
+            "t": "2026-06-25 17:00",
+        }
+
+        response = self.fetch(
+            "/mobile/event?id=1", headers=self._auth_headers()
+        )
+
+        self.assertEqual(200, response.code)
+        self.assertEqual(1, len(self.database.query_calls))
+        suggestion_statement, suggestion_parameters = self.database.query_calls[0]
+        self.assertIn("a.event_id = b.event_id", suggestion_statement)
+        self.assertEqual((1,), suggestion_parameters)
+        self.assertEqual([], self.graph.request_calls)
+
     def test_friend_access_reaches_authorized_mutation(self):
         self.graph.friends = [{"id": "7"}]
         response = self.fetch(

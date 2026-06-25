@@ -39,6 +39,7 @@ TORNADO_SECURITY_UPDATE_PLAN = ROOT / "docs" / "plans" / "2026-06-16-tornado-6.5
 AVAILABILITY_PAYLOAD_PLAN = ROOT / "docs" / "plans" / "2026-06-16-availability-payload-validation.md"
 AVAILABILITY_TRANSACTION_PLAN = ROOT / "docs" / "plans" / "2026-06-17-availability-replacement-transaction.md"
 MAKE_AUTHORITY_PLAN = ROOT / "docs" / "plans" / "2026-06-21-make-authority-isolation.md"
+MOBILE_EVENT_RENDERING_PLAN = ROOT / "docs" / "plans" / "2026-06-25-mobile-event-rendering.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -916,10 +917,25 @@ def test_message_ids_are_validated_before_database_access():
 
 def test_mobile_event_rendering_requires_owner_or_friend_access():
     source = MOBILE.read_text()
+    template = MOBILE_EVENT_TEMPLATE.read_text()
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
     assert_true(
         "self.event = await self.require_event_access(_eventid)" in source
         and source.index("await self.require_event_access(_eventid)") < source.index("self.places = self.db.query"),
         "mobile EventHandler must enforce access before rendering mobile_event.html",
+    )
+    assert_true(
+        "a.id = b.suggestion_id AND a.event_id = b.event_id" in source,
+        "mobile suggestion counts must bind vote rows to the requested event",
+    )
+    for legacy_attribute in ["event.id", "event.place", "event.f", "i.name", "i.friends"]:
+        assert_true(
+            legacy_attribute not in template,
+            "mobile event template must use DictCursor-compatible access: " + legacy_attribute,
+        )
+    assert_true(
+        "test_owner_mobile_event_page_binds_votes_to_the_requested_event" in runtime_tests,
+        "runtime tests must render an authorized mobile event with event-bound votes",
     )
 
 
@@ -1277,6 +1293,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(AVAILABILITY_PAYLOAD_PLAN, "availability payload validation")
     assert_completed_plan(AVAILABILITY_TRANSACTION_PLAN, "availability replacement transaction")
     assert_completed_plan(MAKE_AUTHORITY_PLAN, "Make authority isolation")
+    assert_completed_plan(MOBILE_EVENT_RENDERING_PLAN, "mobile event rendering")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
