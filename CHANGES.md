@@ -1,5 +1,12 @@
 # Changes
 
+## 2026-06-25
+
+- Restored authorized mobile event rendering with dictionary access compatible
+  with PyMySQL `DictCursor` rows.
+- Bound mobile suggestion vote counts to the requested event, matching the
+  desktop event query and preventing cross-event vote rows from being counted.
+
 ## 2026-06-21
 
 - Documented and reproduced GNU Make 4.4's command-line `ROOT` pre-load

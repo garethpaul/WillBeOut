@@ -63,7 +63,7 @@ function getCookie(name) {
 		$(document).ready(function(){
 			// SPINNER START
 			$('.msglist').html('Loading');
-			$.getJSON('/messages?event_id={{ event.id }}', function(data) {
+			$.getJSON('/messages?event_id={{ event['id'] }}', function(data) {
 				var items = '';
 			  	$.each(data, function(key, val) {
 					if ( val.user_id == {{ current_user['id'] }} ){
@@ -101,14 +101,14 @@ function getCookie(name) {
 		<div data-role="content" id="contentTransition" name="contentTransition">
 
 			<div class="content-primary">
-			<h2>Event: {{event.place}} [{{event.f}}]</h2> 
+			<h2>Event: {{ event['place'] }} [{{ event['f'] }}]</h2>
 			<a data-role='button' style='max-width:200px;' rel='external' href='#suggestplace'>Suggest A Place</a>
 			<a data-role='button' style='max-width:200px;' rel='external' href='#newmessage'>Add Message</a>
 			<div data-role="collapsible">
 				<h3>Places</h3>
 				<ul data-role="listview">
 					{% for i in places %}
-					<li>{{ i.name }} -  <span class='right'>{{ i.friends }} friends wants to go here</span></li>
+					<li>{{ i['name'] }} -  <span class='right'>{{ i['friends'] }} friends wants to go here</span></li>
 					{% end %}
 				</ul>
 			</div>
@@ -142,7 +142,7 @@ function getCookie(name) {
 		<div data-role="content" id="contentTransition" name="contentTransition">
 
 			<div class="content-primary">
-			<h2>Event: {{event.place}}</h2> 
+			<h2>Event: {{ event['place'] }}</h2>
 			<input type='text' value='Cocktails' id='string' />	
 			<input type='text' value='San Francisco'id='location' />
 			<button id='yelp' class='btn btn-orange'>Find Places</button>
@@ -225,7 +225,7 @@ function getCookie(name) {
 		  </div>
 		<div data-role="content" id="contentTransition" name="contentTransition">
 			<div class="content-primary">
-			<h2>Event: {{event.place}}</h2> 
+			<h2>Event: {{ event['place'] }}</h2>
 			<form data-rel='external' id='newform'>
 			{% module xsrf_form_html() %}
 			<label>Add Message</label>
