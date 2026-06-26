@@ -101,7 +101,6 @@ function getCookie(name) {
 
 			<div class="content-primary">
 			<h2>Event: {{ event['place'] }} [{{ event['f'] }}]</h2>
-			<a data-role='button' style='max-width:200px;' rel='external' href='#suggestplace'>Suggest A Place</a>
 			<a data-role='button' style='max-width:200px;' rel='external' href='#newmessage'>Add Message</a>
 			<div data-role="collapsible">
 				<h3>Places</h3>
@@ -124,91 +123,6 @@ function getCookie(name) {
 			<a href="/mobile/events" rel='external' data-role="button" data-icon="plus">Home</a>
 			<!--<a href="index.html" data-role="button" data-icon="plus">aybe</a>-->
 			</div>
-		</div>
-		</div>
-		
-		<!-- NEW PLACE -->
-		<div data-role="page" id='suggestplace'>  
-		  <div data-role="header">
-			<div data-role="controlgroup" data-type="horizontal">
-			<a onclick='javascript:history.go(-1)' data-role="button" data-icon="back">Back</a>
-			<!--<a href="index.html" data-role="button" data-icon="plus">aybe</a>-->
-			<div class='wrap'>
-			<img src='/static/img/og.png'><span class='main'>WillBeOut</span>
-			</div>
-			</div>
-		  </div>
-		<div data-role="content" id="contentTransition" name="contentTransition">
-
-			<div class="content-primary">
-			<h2>Event: {{ event['place'] }}</h2>
-			<input type='text' value='Cocktails' id='string' />	
-			<input type='text' value='San Francisco'id='location' />
-			<button id='yelp' class='btn btn-orange'>Find Places</button>
-			<ul id='results'></ul>
-			<script type='text/javascript'>
-			$('#yelp').click(function(){
-				places($('#string').val(), $('#location').val());
-			});
-
-
-
-			function places(string, location){
-				$.ajax({
-				    url      : 'https://api.yelp.com/business_review_search?'
-						  + 'term=' + string + '&'
-			 			  + '&location=' + location
-						  + '&sort=2'
-						  + '&limit=11'
-						  + '&ywsid=XC8xrNSGzZfZw6731kvJiA',
-				    dataType : 'jsonp',
-				    //data     : {term : 'restaurant', lat : xxx, long : xxx}, // callback is not necessary
-				    success  : function(data) {
-					console.log(data);
-					if (data.message.text = 'OK'){
-						$('#results').html('');
-						$.each(data.businesses, function(index, value) { 
-						  var item = data.businesses[index];
-						  var r = $('#results');
-						  var t = '<li class="limob">' 
-							+ '<a target="_blank" href="' + item.url + '">' + (item.name) + '</a>'
-							+ '<button class="suggest btn right btn-mobile" data-name="' + item.name + '"data-address="' 
-							+ item.address1 + '"data-city="' + item.city + '" data-url="' 
-							+ item.url + '">Suggest</button>'
-							+ '<span>(' + (item.review_count) + ')</span>'
-						        + '<span><img src="' + (item.rating_img_url_small) + '" /></span>';
-						  r.append(t);
-						});
-						$('.suggest').click(function(){
-							// details
-							var it = $(this);
-							$.post("/suggest", { 
-									'name' : it.attr('data-name'),
-									'url' : it.attr('data-url'),
-									'address': it.attr('data-address'),
-									'city': it.attr('data-city'),
-									'event_id': '{{ event['id' ]}}',
-									'_xsrf': getCookie("_xsrf")
-							}, function(data) {
-								if (data = 'OK'){
-									window.location.href = '/mobile/event?id={{ event['id' ]}}';
-								}
-							});
-						});
-					}
-				}
-				});
-			}
-
-			</script>
-			
-		 </div> 
-		<div data-role="footer" class='ui-bar'>
-			<div data-role="controlgroup" data-type="horizontal">
-			<a href="/mobile/events" rel='external' data-role="button" data-icon="plus">Home</a>
-			<!--<a href="index.html" data-role="button" data-icon="plus">aybe</a>-->
-			</div>
-		</div>
 		</div>
 		</div>
 		

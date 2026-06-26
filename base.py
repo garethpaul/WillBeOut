@@ -1,5 +1,6 @@
 import tornado.web
 import tornado.escape
+from urllib.parse import urlsplit
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -37,6 +38,23 @@ class BaseHandler(tornado.web.RequestHandler):
             return int(value)
         except (TypeError, ValueError):
             raise tornado.web.HTTPError(400)
+
+    @staticmethod
+    def safe_external_url(value):
+        try:
+            parsed = urlsplit(value)
+            valid = (
+                isinstance(value, str)
+                and 0 < len(value) <= 2048
+                and not any(ord(character) < 32 or ord(character) == 127 for character in value)
+                and parsed.scheme.lower() in ("http", "https")
+                and bool(parsed.hostname)
+                and parsed.username is None
+                and parsed.password is None
+            )
+        except (TypeError, ValueError):
+            valid = False
+        return value if valid else None
 
     def write_error(self, status_code, **kwargs):
         self.write("Sorry there was a problem")

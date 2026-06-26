@@ -11,24 +11,24 @@
 <div class='row'>
 	<div class='span11'>
 	<div class='suggest'>
-		<h3>Suggestions <a href="#places" role="button" class="btn padd" data-toggle="modal"><span class='icon icon-plus'></span>Suggestion</a></h3>
+		<h3>Suggestions</h3>
 		<ul class='suggestlist'>
 			{% for i in suggestions %}
-			<li id='{{ i.id}}' data-id='{{ i.id }}'> 
+			<li id='{{ i['id'] }}' data-id='{{ i['id'] }}'>
 			<span class='left'>
 				<!--<div class="corner">
 				  <span href="#">Voted By Event Owner</span>
 				</div>
 				-->
-					<p class='name'><a target='_blank' rel='noopener noreferrer' href='{{i.url}}'>{{ i.name }}</a></p>
-				<p class='address'>{{ i.address}}</p>
-				<p class='city'>{{ i.city }}</p>
-				<p class='city'>Provider: {{ i.user_name }}</p>
-				<p class='votes'>{{ i.friends }} friends have voted for this location..</p>
-				<span data-id='{{ i.id }}' class='voted right hide'>You have voted for this place.<button type='button' data-action='/change/vote' data-id='{{ i.id }}' data-event-id='{{ event['id'] }}' class='changevote vote-action btn btn-link'>Remove Your Vote</button></span>
-				<button type='button' data-action='/vote' data-id='{{ i.id }}' data-event-id='{{ event['id'] }}' class='btn vote vote-action right hide'><span class='icon icon-plus'></span> me</button>
+					<p class='name'>{% if i['url'] %}<a target='_blank' rel='noopener noreferrer' href='{{ i['url'] }}'>{{ i['name'] }}</a>{% else %}{{ i['name'] }}{% end %}</p>
+				<p class='address'>{{ i['address'] }}</p>
+				<p class='city'>{{ i['city'] }}</p>
+				<p class='city'>Provider: {{ i['user_name'] }}</p>
+				<p class='votes'>{{ i['friends'] }} friends have voted for this location..</p>
+				<span data-id='{{ i['id'] }}' class='voted right hide'>You have voted for this place.<button type='button' data-action='/change/vote' data-id='{{ i['id'] }}' data-event-id='{{ event['id'] }}' class='changevote vote-action btn btn-link'>Remove Your Vote</button></span>
+				<button type='button' data-action='/vote' data-id='{{ i['id'] }}' data-event-id='{{ event['id'] }}' class='btn vote vote-action right hide'><span class='icon icon-plus'></span> me</button>
 			</span>
-			<span class='right'><img src="https://graph.facebook.com/{{ i.user_id }}/picture?type=small"/></span>
+			<span class='right'><img src="https://graph.facebook.com/{{ i['user_id'] }}/picture?type=small"/></span>
 			</li>
 			{% end %}
 		</ul>
@@ -47,7 +47,7 @@
 		    var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
 		    return r ? r[1] : undefined;
 		}
-		var votes = [{% for i in votes %}'{{ i.suggestion_id }}',{% end %}];
+			var votes = [{% for i in votes %}'{{ i['suggestion_id'] }}',{% end %}];
 		$.each($('.suggestlist li'), function(index, value){
 			var _id = $(this).attr('data-id');
 			if (votes.indexOf(_id) >= 0){
@@ -265,84 +265,5 @@ $('#newtime').submit(function(){
   </div>
   </form>
 </div>
-
-<div class="modal" style='display:none' id="places" tabindex="-1" role="dialog" aria-labelledby="newLabel" aria-hidden="true">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <h3 id="myModalLabel">Suggest Places</h3>
-  </div>
-  
-  <div class="modal-body">
-	<input type='text' value='Cocktails' id='string' />	
-	<input type='text' value='San Francisco'id='location' />
-	<button id='yelp' class='btn btn-orange'>Find Places</button>
-	<ul id='results'></ul>
-	<script type='text/javascript'>
-	$('#yelp').click(function(){
-		places($('#string').val(), $('#location').val());
-	});
-
-	
-
-	function places(string, location){
-		$.ajax({
-		    url      : 'https://api.yelp.com/business_review_search?'
-				  + 'term=' + string + '&'
-	 			  + '&location=' + location
-				  + '&sort=2'
-				  + '&limit=11'
-				  + '&ywsid=XC8xrNSGzZfZw6731kvJiA',
-		    dataType : 'jsonp',
-		    //data     : {term : 'restaurant', lat : xxx, long : xxx}, // callback is not necessary
-		    success  : function(data) {
-			console.log(data);
-			if (data.message.text = 'OK'){
-				$('#results').html('');
-				$.each(data.businesses, function(index, value) { 
-				  var item = data.businesses[index];
-				  var r = $('#results');
-				  var t = '<li>' 
-					+ '<a target="_blank" href="' + item.url + '">' + (item.name) + '</a>'
-					+ '<button class="suggest btn right" data-name="' + item.name + '"data-address="' 
-					+ item.address1 + '"data-city="' + item.city + '" data-url="' 
-					+ item.url + '" style="line-height:12px">Suggest</button>'
-					+ '<span>(' + (item.review_count) + ')</span>'
-				        + '<span><img src="' + (item.rating_img_url_small) + '" /></span>';
-				  r.append(t);
-				});
-				$('.suggest').click(function(){
-					// details
-					var it = $(this);
-					$.post("/suggest", { 
-							'name' : it.attr('data-name'),
-							'url' : it.attr('data-url'),
-							'address': it.attr('data-address'),
-							'city': it.attr('data-city'),
-							'event_id': '{{ event['id' ]}}',
-							'_xsrf': getCookie("_xsrf")
-					}, function(data) {
-						if (data = 'OK'){
-							window.location.href = '/event?event_id={{ event['id' ]}}';
-						}
-					});
-				});
-			}
-		}
-		});
-	}
-
-	</script>
-  </div>
-  <div class="modal-footer">
-    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
-  </div>
-  </form>
-</div>
-<script>
-
-
-
-</script>
-
 
 {% end %}

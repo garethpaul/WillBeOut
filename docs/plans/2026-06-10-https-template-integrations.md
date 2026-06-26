@@ -37,5 +37,5 @@ request tampering.
 
 ## Follow-Up Candidates
 
-- Replace the retired Yelp v1 JSONP integration with a server-side, credentialed
-  API path if this app is revived.
+- Completed by `2026-06-25-yelp-jsonp-retirement.md`: the retired Yelp v1 JSONP
+  integration was removed. A replacement remains future server-mediated work.

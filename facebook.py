@@ -7,7 +7,6 @@ import tornado.web
 from base import BaseHandler
 from tornado.log import access_log
 from tornado.options import define, options
-from urllib.parse import urlsplit
 from database import Database
 from facebook_client import FacebookClient
 from session import SessionCipher
@@ -141,22 +140,10 @@ class Privacy(tornado.web.RequestHandler):
 class SuggestHandler(BaseHandler):
     @staticmethod
     def validate_suggestion_url(value):
-        try:
-            parsed = urlsplit(value)
-            valid = (
-                isinstance(value, str)
-                and 0 < len(value) <= 2048
-                and not any(ord(character) < 32 or ord(character) == 127 for character in value)
-                and parsed.scheme.lower() in ("http", "https")
-                and bool(parsed.hostname)
-                and parsed.username is None
-                and parsed.password is None
-            )
-        except (TypeError, ValueError):
-            valid = False
-        if not valid:
+        safe_url = BaseHandler.safe_external_url(value)
+        if safe_url is None:
             raise tornado.web.HTTPError(400)
-        return value
+        return safe_url
 
     @tornado.web.authenticated
     async def post(self):

@@ -10,10 +10,18 @@ class EventHandler(base.BaseHandler):
         _eventid = self.get_int_argument('event_id')
         self.event = await self.require_event_access(_eventid)
         _user_id = self.get_current_user()['id']
-        self.suggest = self.db.query("""select a.id, a.event_id, a.address, a.city, a.name, a.url, a.user_id, a.user_name, count(b.suggestion_id) as friends from willbeout_suggest as a
+        suggestions = self.db.query("""select a.id, a.event_id, a.address, a.city, a.name, a.url, a.user_id, a.user_name, count(b.suggestion_id) as friends from willbeout_suggest as a
         LEFT JOIN willbeout_votes as b ON a.id = b.suggestion_id AND a.event_id = b.event_id
         WHERE a.event_id = %s
         GROUP BY a.id ORDER BY friends DESC;""", _eventid)
+        self.suggest = []
+        for suggestion in suggestions:
+            if hasattr(suggestion, "items"):
+                suggestion = dict(suggestion)
+            else:
+                suggestion = vars(suggestion).copy()
+            suggestion["url"] = self.safe_external_url(suggestion.get("url"))
+            self.suggest.append(suggestion)
         self.votes = self.db.query("""select suggestion_id from willbeout_votes where event_id = %s and user_id = %s group by suggestion_id;
         """, _eventid, int(_user_id))
 

@@ -1,5 +1,32 @@
 # Changes
 
+## 2026-06-25T18:33:31-0700 — P1 security — cycle: retired Yelp JSONP integration
+
+- Cycle: inspected public open work, green default branches, persisted plans,
+  event templates, suggestion storage, tests, and provider documentation.
+- Threads: four investigators reviewed the executable provider boundary, user
+  experience, dependency-free contracts, and repository history.
+- Bug: desktop and mobile event pages exposed Yelp's retired v1 search through
+  JSONP, embedded a legacy provider credential, executed remote responses as
+  JavaScript, and assembled provider-controlled fields into HTML strings.
+- Work: removed the dead search controls and scripts from both templates while
+  preserving stored suggestion rendering, desktop voting, mobile places, and
+  mobile messaging. Added a dedicated regression contract and documented that
+  future provider search must be server-mediated with private credentials.
+  Revalidated legacy stored URLs at render time so unsafe schemes appear as
+  plain suggestion names rather than links.
+- Validation: RED failed on the live Yelp endpoint. Full `make check` passes with
+  30 static contracts, 39 runtime tests, 54 workflow/lock mutations, lint, and
+  Make authority; dependency health and `git diff --check` pass. Eleven hostile
+  mutations restoring provider execution/UI or removing preserved suggestion,
+  voting, messaging, and stored-link protections are rejected; harmless
+  non-API Yelp attribution remains allowed.
+- Blockers: live provider replacement is intentionally out of scope because it
+  requires a private API key, server request handling, response validation, and
+  product/privacy decisions.
+- Next: complete independent re-review, exact-head Codex review, hosted CI, and
+  merge.
+
 ## 2026-06-25T18:15:09-0700 — P0 security — cycle: stored message rendering XSS
 
 - Cycle: inspected public open work, green main-branch workflows, persisted risks,
