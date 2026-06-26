@@ -43,6 +43,7 @@ MOBILE_EVENT_RENDERING_PLAN = ROOT / "docs" / "plans" / "2026-06-25-mobile-event
 MESSAGE_RENDERING_XSS_PLAN = ROOT / "docs" / "plans" / "2026-06-25-message-rendering-xss.md"
 YELP_JSONP_RETIREMENT_PLAN = ROOT / "docs" / "plans" / "2026-06-25-yelp-jsonp-retirement.md"
 PROJECT_STATUS_PLAN = ROOT / "docs" / "plans" / "2026-06-25-project-status-and-setup.md"
+EVENT_AUTHORIZATION_EDGE_PLAN = ROOT / "docs" / "plans" / "2026-06-26-event-authorization-edge-matrix.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -518,11 +519,13 @@ def test_all_event_scoped_endpoints_require_shared_access():
     for contract in [
         "test_unauthorized_event_reads_stop_after_access_lookup",
         "test_unauthorized_event_writes_stop_before_mutation",
+        "test_missing_event_reads_stop_after_event_lookup",
+        "test_missing_event_writes_stop_before_mutation",
         "test_owner_access_skips_facebook_and_reaches_event_data",
         "test_friend_access_reaches_authorized_mutation",
-        "test_missing_event_is_not_disclosed_as_forbidden",
         "self.assertEqual([], self.database.execute_calls, path)",
         "self.assertEqual([], self.database.query_calls, path)",
+        "self.assertEqual([], self.database.transaction_calls, path)",
     ]:
         assert_true(contract in runtime_tests, "runtime tests must preserve event access contract: " + contract)
 
@@ -1435,6 +1438,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(MOBILE_EVENT_RENDERING_PLAN, "mobile event rendering")
     assert_completed_plan(MESSAGE_RENDERING_XSS_PLAN, "message rendering XSS")
     assert_completed_plan(YELP_JSONP_RETIREMENT_PLAN, "Yelp JSONP retirement")
+    assert_completed_plan(EVENT_AUTHORIZATION_EDGE_PLAN, "event authorization edge matrix")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:

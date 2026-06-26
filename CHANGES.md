@@ -1,5 +1,27 @@
 # Changes
 
+## 2026-06-26T03:10:58-0700 — P1 tests — cycle: event authorization edge matrix
+
+- Cycle: selected the remaining portable authorization-test roadmap gap after
+  provider and credentialed integration work remained blocked.
+- Finding: denied-access tests covered all protected event routes but omitted
+  transactional writes, while missing-event 404 behavior executed only the
+  message read path.
+- Work: centralized five protected reads and eight protected writes, exercised
+  both 403 and 404 boundaries across the full matrix, and asserted no Facebook
+  lookup, query, execute, rowcount, or transaction follows a missing event.
+- Files: expanded `test_modern_runtime.py`, strengthened the static contract,
+  reconciled README/VISION, and added the completed test plan.
+- Validation: the focused 18-test authorization class passed; a temporary
+  mutation removing the message access check failed with `404 != 200` on the
+  new missing-event matrix. Checkout and external-root `make check` passed 31
+  static contracts, 40 no-network runtime tests, 31 workflow mutations, 23 lock
+  mutations, and 40 Make authority cases. Dependency health, audit, compilation,
+  and diff checks passed with no known vulnerabilities.
+- Blockers: none for no-network verification; hosted Python and CodeQL remain
+  exact-head authority.
+- Next: run exact-head review, hosted CI, and merge.
+
 ## 2026-06-25T21:13:30-0700 — P3 documentation — cycle: project status and setup
 
 - Cycle: selected the highest actionable WillBeOut roadmap item after the
