@@ -42,6 +42,7 @@ MAKE_AUTHORITY_PLAN = ROOT / "docs" / "plans" / "2026-06-21-make-authority-isola
 MOBILE_EVENT_RENDERING_PLAN = ROOT / "docs" / "plans" / "2026-06-25-mobile-event-rendering.md"
 MESSAGE_RENDERING_XSS_PLAN = ROOT / "docs" / "plans" / "2026-06-25-message-rendering-xss.md"
 YELP_JSONP_RETIREMENT_PLAN = ROOT / "docs" / "plans" / "2026-06-25-yelp-jsonp-retirement.md"
+PROJECT_STATUS_PLAN = ROOT / "docs" / "plans" / "2026-06-25-project-status-and-setup.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -1376,6 +1377,34 @@ def assert_completed_plan(path, label):
     assert_true("make check" in plan, "{0} plan must record verification".format(label))
 
 
+def test_project_status_and_setup_documentation():
+    readme = (ROOT / "README.md").read_text()
+    vision = (ROOT / "VISION.md").read_text()
+
+    for contract in (
+        "## Project Status",
+        "maintained historical application",
+        "GitHub repository is not archived.",
+        "does not confirm that willbeout.com is currently operated",
+        "python3 -m venv .venv",
+        "python -m pip install --require-hashes -r requirements.lock",
+        "python3 facebook.py --port=5000",
+    ):
+        assert_true(contract in readme, "README project status/setup contract is missing {0!r}".format(contract))
+
+    assert_true(
+        "Add README setup notes and archive status" not in vision,
+        "VISION must not retain the completed README setup and archive-status priority",
+    )
+    assert_true(
+        "The repository is maintained as a historical application." in vision
+        and "At the June 25, 2026" in vision
+        and "its GitHub repository was not archived." in vision,
+        "VISION must record the current maintenance and archive status",
+    )
+    assert_completed_plan(PROJECT_STATUS_PLAN, "project status and setup")
+
+
 def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(COOKIE_SECRET_PLAN, "auth contract")
     assert_completed_plan(SAFE_NEXT_PLAN, "safe auth next redirect")
@@ -1443,6 +1472,7 @@ def main():
         test_ci_workflow_runs_make_check,
         test_modern_runtime_dependency_and_api_contracts,
         test_makefile_is_root_independent,
+        test_project_status_and_setup_documentation,
         test_plan_and_cleanup_contracts_exist,
     ]
     for test in tests:

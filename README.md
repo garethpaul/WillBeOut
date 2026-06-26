@@ -13,6 +13,19 @@ The repository keeps live services outside automated tests. Fake database,
 HTTP, Graph, and session dependencies exercise the runtime without credentials
 or network access.
 
+## Project Status
+
+WillBeOut is a maintained historical application. The repository receives
+bounded security, dependency, compatibility, and documentation work rather
+than feature commitments or hosted-service support. As verified on June 25,
+2026, the GitHub repository is not archived.
+
+Repository maintenance does not confirm that willbeout.com is currently operated.
+Running the full application requires an isolated Meta app, a registered HTTPS
+redirect URI, a MySQL database, and deployment secrets described below. The
+credential-free `make check` path is the supported way to validate a checkout
+without those services.
+
 ## Repository Contents
 
 - `facebook.py` - application entry point and route configuration
@@ -159,6 +172,8 @@ documented in `docs/plans/2026-06-21-make-authority-isolation.md`.
 - See `VISION.md` for product direction and contribution guardrails.
 - See `docs/plans/2026-06-12-modern-python-web-runtime.md` for the Python 3,
   Tornado, database, OAuth, encrypted-session, and dependency migration.
+- See `docs/plans/2026-06-25-project-status-and-setup.md` for the documented
+  maintenance, archive, setup, and hosted-service boundary.
 - See `docs/plans/2026-06-12-willbeout-first-party-codeql-remediation.md`
   for the first-party CodeQL alert remediation.
 - See `docs/plans/2026-06-13-oauth-error-callbacks.md` for state-bound OAuth

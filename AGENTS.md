@@ -68,6 +68,9 @@
 - Do not commit generated desktop metadata such as `.DS_Store`.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
+- See `docs/plans/2026-06-25-project-status-and-setup.md` for the distinction
+  between repository maintenance, GitHub archive state, local setup, and any
+  claim about the original hosted service.
 
 ## Agent workflow
 
