@@ -51,6 +51,7 @@ Priority:
 - Keep the dependency-free `make check` baseline running in GitHub Actions
 - Keep hosted verification read-only, credential-free, pinned, and protected
   against structural workflow regressions
+- Keep no-network runtime coverage for auth, event access, votes, and availability updates
 - Avoid exposing friend, event, or attendance data
 
 Next priorities:
@@ -58,7 +59,6 @@ Next priorities:
 - Add a supported server-mediated place search only with reviewed provider
   credentials, response validation, privacy boundaries, and no-network tests
 - Exercise the modern Meta and MySQL integrations in an isolated credentialed environment
-- Add tests for auth, event access, votes, and availability updates
 - Keep `make check` covering auth and secret-configuration contracts
 
 Contribution rules:

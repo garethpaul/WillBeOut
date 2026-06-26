@@ -44,6 +44,7 @@ MESSAGE_RENDERING_XSS_PLAN = ROOT / "docs" / "plans" / "2026-06-25-message-rende
 YELP_JSONP_RETIREMENT_PLAN = ROOT / "docs" / "plans" / "2026-06-25-yelp-jsonp-retirement.md"
 PROJECT_STATUS_PLAN = ROOT / "docs" / "plans" / "2026-06-25-project-status-and-setup.md"
 EVENT_AUTHORIZATION_EDGE_PLAN = ROOT / "docs" / "plans" / "2026-06-26-event-authorization-edge-matrix.md"
+RUNTIME_TEST_ROADMAP_PLAN = ROOT / "docs" / "plans" / "2026-06-26-runtime-test-roadmap.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -1408,6 +1409,36 @@ def test_project_status_and_setup_documentation():
     assert_completed_plan(PROJECT_STATUS_PLAN, "project status and setup")
 
 
+def test_runtime_test_roadmap_matches_current_coverage():
+    readme = (ROOT / "README.md").read_text()
+    vision = (ROOT / "VISION.md").read_text()
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+    for test_name in (
+        "test_oauth_state_round_trip_creates_encrypted_session",
+        "test_unauthorized_event_writes_stop_before_mutation",
+        "test_vote_mutations_reject_suggestion_outside_authorized_event",
+        "test_availability_validates_all_times_before_ordered_replacement",
+    ):
+        assert_true(test_name in runtime_tests, "runtime coverage missing " + test_name)
+    for contract in (
+        "40 executable no-network runtime tests",
+        "OAuth state and signed-cookie boundaries",
+        "protected-event 403/404 read and write matrix",
+        "vote-to-event binding",
+        "validated atomic availability replacement",
+    ):
+        assert_true(contract in readme, "README runtime coverage missing " + contract)
+    assert_true(
+        "Keep no-network runtime coverage for auth, event access, votes, and availability updates" in vision,
+        "VISION must preserve the current runtime coverage invariant",
+    )
+    assert_true(
+        "Add tests for auth, event access, votes, and availability updates" not in vision,
+        "VISION must retire the completed broad runtime-test priority",
+    )
+    assert_completed_plan(RUNTIME_TEST_ROADMAP_PLAN, "runtime test roadmap reconciliation")
+
+
 def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(COOKIE_SECRET_PLAN, "auth contract")
     assert_completed_plan(SAFE_NEXT_PLAN, "safe auth next redirect")
@@ -1477,6 +1508,7 @@ def main():
         test_modern_runtime_dependency_and_api_contracts,
         test_makefile_is_root_independent,
         test_project_status_and_setup_documentation,
+        test_runtime_test_roadmap_matches_current_coverage,
         test_plan_and_cleanup_contracts_exist,
     ]
     for test in tests:
