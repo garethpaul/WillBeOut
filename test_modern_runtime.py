@@ -463,6 +463,40 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
         self.assertEqual((1, 42), vote_parameters)
         self.assertEqual([], self.graph.request_calls)
 
+    def test_owner_event_page_does_not_link_unsafe_legacy_suggestion_urls(self):
+        self.database.event = {
+            "id": 1,
+            "userid": "42",
+            "place": "Office",
+            "f": "2026-06-25 09:00",
+            "t": "2026-06-25 17:00",
+        }
+
+        def query(statement, *parameters):
+            self.database.query_calls.append((statement, parameters))
+            if "willbeout_suggest" in statement:
+                return [SimpleNamespace(
+                    id=2,
+                    event_id=1,
+                    address="1 Main Street",
+                    city="San Francisco",
+                    name="Legacy Place",
+                    url="javascript:alert(1)",
+                    user_id=42,
+                    user_name="Ada",
+                    friends=0,
+                )]
+            return []
+
+        self.database.query = query
+        response = self.fetch(
+            "/event?event_id=1", headers=self._auth_headers()
+        )
+
+        self.assertEqual(200, response.code)
+        self.assertIn(b"Legacy Place", response.body)
+        self.assertNotIn(b"javascript:alert(1)", response.body)
+
     def test_owner_mobile_event_page_binds_votes_to_the_requested_event(self):
         self.database.event = {
             "id": 1,

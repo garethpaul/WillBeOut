@@ -55,8 +55,11 @@ Helpful reports include:
 - Availability replacements validate the complete payload before the first database mutation.
 - Availability replacement verifies InnoDB before DELETE and rolls back the
   complete replacement when any ordered statement fails.
-- Active template-side external integrations should use HTTPS to avoid mixed
-  content and request tampering.
+- Fixed template-side external assets should use HTTPS to avoid mixed content
+  and request tampering. Templates must not call provider APIs through JSONP or
+  expose provider credentials; credentialed integrations belong server-side.
+- Stored external suggestion links must be revalidated before rendering because
+  legacy rows may predate current write-time URL validation.
 - Post-login redirects are restricted to the literal `/` and `/events`
   destinations; do not restore arbitrary `next` values or user-agent regex
   routing in the authentication flow.

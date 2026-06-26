@@ -146,6 +146,11 @@ documented in `docs/plans/2026-06-21-make-authority-isolation.md`.
   require an unavailable legacy `link` field in the encrypted session payload.
 - Event templates use dictionary access compatible with the configured
   PyMySQL `DictCursor` rows.
+- Event templates do not call provider APIs with JSONP or expose provider
+  credentials. Existing suggestions remain visible and votable; a future place
+  search must be server-mediated with secrets held in deployment configuration.
+- Stored suggestion links are revalidated at render time so legacy non-HTTP(S)
+  values appear as plain text instead of clickable URLs.
 - Cookie, session, Meta, and MySQL secrets must never be committed.
 
 ## Maintenance Notes
@@ -164,6 +169,8 @@ documented in `docs/plans/2026-06-21-make-authority-isolation.md`.
   authenticated user to the desktop event page's vote lookup.
 - See `docs/plans/2026-06-16-vote-suggestion-event-binding.md` for isolating
   vote mutations to suggestions within the authorized event.
+- See `docs/plans/2026-06-25-yelp-jsonp-retirement.md` for retiring the obsolete
+  client-side place search while preserving existing suggestion rendering.
 - Earlier plans under `docs/plans/` preserve the event access, integer ID,
   XSRF, secure-cookie, HTTPS integration, and CI decisions enforced by
   `make check`.

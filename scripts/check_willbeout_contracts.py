@@ -41,6 +41,7 @@ AVAILABILITY_TRANSACTION_PLAN = ROOT / "docs" / "plans" / "2026-06-17-availabili
 MAKE_AUTHORITY_PLAN = ROOT / "docs" / "plans" / "2026-06-21-make-authority-isolation.md"
 MOBILE_EVENT_RENDERING_PLAN = ROOT / "docs" / "plans" / "2026-06-25-mobile-event-rendering.md"
 MESSAGE_RENDERING_XSS_PLAN = ROOT / "docs" / "plans" / "2026-06-25-message-rendering-xss.md"
+YELP_JSONP_RETIREMENT_PLAN = ROOT / "docs" / "plans" / "2026-06-25-yelp-jsonp-retirement.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -379,8 +380,9 @@ def test_state_changes_require_post_and_xsrf_tokens():
         "desktop AJAX mutations must send the XSRF token",
     )
     assert_true(
-        mobile_template.count("'_xsrf': getCookie(") >= 2,
-        "mobile AJAX mutations must send the XSRF token",
+        mobile_template.count("$.post(") >= 1
+        and mobile_template.count("$.post(") == mobile_template.count("'_xsrf': getCookie("),
+        "each mobile AJAX mutation must send the XSRF token",
     )
     assert_true(
         '_xsrf: getCookie("_xsrf")' in calendar_javascript,
@@ -427,7 +429,7 @@ def test_event_rendering_requires_owner_or_friend_access():
         "desktop EventHandler must use the shared event access guard",
     )
     assert_true(
-        source.index("await self.require_event_access(_eventid)") < source.index("self.suggest = self.db.query"),
+        source.index("await self.require_event_access(_eventid)") < source.index("suggestions = self.db.query"),
         "EventHandler must enforce access before rendering event.html",
     )
 
@@ -999,7 +1001,6 @@ def test_active_template_integrations_use_https():
     for prefix in [
         "http://code.jquery.com",
         "http://connect.facebook.net",
-        "http://api.yelp.com",
         "http://www.facebook.com/profile.php",
         "http://willbeout.com/event",
         "http://127.0.0.1:5000/event",
@@ -1011,11 +1012,89 @@ def test_active_template_integrations_use_https():
         "https://code.jquery.com/mobile/1.1.1/jquery.mobile-1.1.1.min.css",
         "https://code.jquery.com/mobile/1.1.1/jquery.mobile-1.1.1.min.js",
         "https://connect.facebook.net/en_US/all.js",
-        "https://api.yelp.com/business_review_search?",
         "https://www.facebook.com/profile.php?id=",
         "https://willbeout.com/event?event_id=",
     ]:
         assert_true(expected in combined, "active template integration must stay on HTTPS: {0}".format(expected))
+
+
+def test_retired_yelp_jsonp_is_not_executable():
+    desktop = EVENT_TEMPLATE.read_text()
+    mobile = MOBILE_EVENT_TEMPLATE.read_text()
+    combined = "\n".join(path.read_text() for path in (ROOT / "templates").rglob("*.html"))
+
+    for label, pattern in {
+        "direct Yelp API access": r"https?://api\.yelp\.com(?:[/:?]|$)",
+        "retired Yelp endpoint": r"\bbusiness_review_search\b",
+        "legacy Yelp credential": r"\bywsid\s*=",
+        "JSONP response execution": r"\bdataType\s*:\s*['\"]jsonp['\"]",
+        "JSONP callback query": r"(?:callback|jsoncallback)\s*=\s*\?",
+        "legacy Yelp search trigger": r"\bid\s*=\s*['\"]yelp['\"]",
+    }.items():
+        assert_true(
+            re.search(pattern, combined, re.IGNORECASE) is None,
+            "event templates must not restore {0}".format(label),
+        )
+    for template_name, template, patterns in [
+        ("desktop", desktop, [r"href\s*=\s*['\"]#places['\"]", r"id\s*=\s*['\"]places['\"]"]),
+        (
+            "mobile",
+            mobile,
+            [r"href\s*=\s*['\"]#suggestplace['\"]", r"id\s*=\s*['\"]suggestplace['\"]"],
+        ),
+    ]:
+        for pattern in patterns:
+            assert_true(
+                re.search(pattern, template, re.IGNORECASE) is None,
+                "{0} must not expose the retired place-search UI".format(template_name),
+            )
+    assert_true(
+        "{% for i in suggestions %}" in desktop and "class='suggestlist'" in desktop,
+        "desktop must continue rendering existing suggestions",
+    )
+    events_source = EVENTS.read_text()
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+    assert_true(
+        'suggestion["url"] = self.safe_external_url(suggestion.get("url"))' in events_source,
+        "desktop rendering must validate stored suggestion links",
+    )
+    assert_true(
+        "{% if i['url'] %}" in desktop and "{% else %}{{ i['name'] }}{% end %}" in desktop,
+        "unsafe stored suggestion URLs must render as non-link text",
+    )
+    assert_true(
+        "test_owner_event_page_does_not_link_unsafe_legacy_suggestion_urls" in runtime_tests,
+        "runtime tests must cover unsafe legacy suggestion URLs",
+    )
+    vote_handler = desktop.split("$('.vote-action').click(function()", 1)[1].split("</script>", 1)[0]
+    assert_true(
+        "data-action='/vote'" in desktop
+        and "data-action='/change/vote'" in desktop
+        and "'id': $(this).attr('data-id')" in vote_handler
+        and "'event_id': $(this).attr('data-event-id')" in vote_handler
+        and "'_xsrf': getCookie('_xsrf')" in vote_handler
+        and "window.location.reload();" in vote_handler,
+        "desktop must continue supporting votes on existing suggestions",
+    )
+    assert_true(
+        "{% for i in places %}" in mobile and 'data-role="listview"' in mobile,
+        "mobile must continue rendering existing places",
+    )
+    message_handler = mobile.split("$('form#newform').submit(function(e)", 1)[1].split("</script>", 1)[0]
+    assert_true(
+        "href='#newmessage'" in mobile
+        and "id='newmessage'" in mobile
+        and "id='newform'" in mobile
+        and "{% module xsrf_form_html() %}" in mobile
+        and "$.post('/messages'" in message_handler
+        and "'msg': $('textarea[name=\"msg\"]').val()" in message_handler
+        and "'type': $('input[name=\"type\"]').val()" in message_handler
+        and "'id': $('input[name=\"id\"]').val()" in message_handler
+        and "'_xsrf': getCookie('_xsrf')" in message_handler
+        and "window.location.href = '/mobile/event?id={{event['id']}}';" in message_handler
+        and "class='msglist'" in mobile,
+        "mobile message behavior must remain available",
+    )
 
 
 def test_fixed_cdn_resources_use_reviewed_integrity():
@@ -1326,6 +1405,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(MAKE_AUTHORITY_PLAN, "Make authority isolation")
     assert_completed_plan(MOBILE_EVENT_RENDERING_PLAN, "mobile event rendering")
     assert_completed_plan(MESSAGE_RENDERING_XSS_PLAN, "message rendering XSS")
+    assert_completed_plan(YELP_JSONP_RETIREMENT_PLAN, "Yelp JSONP retirement")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -1357,6 +1437,7 @@ def main():
         test_mobile_event_rendering_requires_owner_or_friend_access,
         test_generated_macos_metadata_is_not_committed,
         test_active_template_integrations_use_https,
+        test_retired_yelp_jsonp_is_not_executable,
         test_fixed_cdn_resources_use_reviewed_integrity,
         test_codeql_analyzes_first_party_sources_only,
         test_ci_workflow_runs_make_check,

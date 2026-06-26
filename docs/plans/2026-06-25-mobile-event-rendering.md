@@ -34,6 +34,6 @@ belong to the same event as the suggestion, unlike the desktop query.
 
 ## Follow-Up Candidates
 
-- Replace the retired client-side Yelp JSONP integration with a supported,
-  server-mediated place search.
+- Completed by `2026-06-25-yelp-jsonp-retirement.md`: the retired client-side
+  Yelp JSONP integration was removed; replacement search remains future work.
 - Add explicit message length and blank-message validation.

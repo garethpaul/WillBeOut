@@ -14,7 +14,7 @@ The current focus is:
 
 Priority:
 
-- Preserve event, availability, suggestion, and voting flows
+- Preserve event, availability, stored-suggestion, and voting flows
 - Keep Facebook and MySQL credentials in deployment configuration
 - Keep Tornado cookie signing secrets in deployment configuration
 - Keep Facebook access tokens encrypted before secure signed-cookie storage
@@ -40,7 +40,8 @@ Priority:
 - Validate message event and delete ids before reading or writing message data
 - Render decoded message content through DOM text APIs instead of HTML parsing
 - Keep generated desktop metadata out of source control
-- Keep active template-side external integrations on HTTPS
+- Keep fixed template-side external assets on HTTPS and provider credentials
+  out of browser code
 - Keep the dependency-free `make check` baseline running in GitHub Actions
 - Keep hosted verification read-only, credential-free, pinned, and protected
   against structural workflow regressions
@@ -48,6 +49,8 @@ Priority:
 
 Next priorities:
 
+- Add a supported server-mediated place search only with reviewed provider
+  credentials, response validation, privacy boundaries, and no-network tests
 - Exercise the modern Meta and MySQL integrations in an isolated credentialed environment
 - Add README setup notes and archive status
 - Add tests for auth, event access, votes, and availability updates
