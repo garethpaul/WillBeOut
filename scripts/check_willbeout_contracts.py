@@ -21,6 +21,7 @@ MOBILE = ROOT / "mobile.py"
 VOTES = ROOT / "votes.py"
 ATTENDEES = ROOT / "attendees.py"
 MESSAGES = ROOT / "messages.py"
+CALENDAR = ROOT / "cal.py"
 FACEBOOK = ROOT / "facebook.py"
 DATABASE = ROOT / "database.py"
 FACEBOOK_CLIENT = ROOT / "facebook_client.py"
@@ -45,6 +46,7 @@ YELP_JSONP_RETIREMENT_PLAN = ROOT / "docs" / "plans" / "2026-06-25-yelp-jsonp-re
 PROJECT_STATUS_PLAN = ROOT / "docs" / "plans" / "2026-06-25-project-status-and-setup.md"
 EVENT_AUTHORIZATION_EDGE_PLAN = ROOT / "docs" / "plans" / "2026-06-26-event-authorization-edge-matrix.md"
 RUNTIME_TEST_ROADMAP_PLAN = ROOT / "docs" / "plans" / "2026-06-26-runtime-test-roadmap.md"
+CALENDAR_JSON_RESPONSE_PLAN = ROOT / "docs" / "plans" / "2026-06-26-calendar-json-response.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -840,6 +842,29 @@ def test_message_rendering_inserts_user_text_without_html_parsing():
     )
 
 
+def test_calendar_api_returns_non_sniffable_json():
+    source = CALENDAR.read_text()
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+    handler = source.split("def get(self):", 1)[1]
+
+    content_type = 'self.set_header("Content-Type", "application/json; charset=UTF-8")'
+    nosniff = 'self.set_header("X-Content-Type-Options", "nosniff")'
+    query = 'self.db.query('
+    assert_true(
+        content_type in handler and nosniff in handler,
+        "calendar API must return non-sniffable JSON",
+    )
+    assert_true(
+        handler.index(content_type) < handler.index(query)
+        and handler.index(nosniff) < handler.index(query),
+        "calendar JSON headers must be set before calendar data access",
+    )
+    assert_true(
+        "test_calendar_api_uses_non_sniffable_json" in runtime_tests,
+        "runtime coverage must preserve the calendar JSON response boundary",
+    )
+
+
 def test_availability_replacement_uses_one_transaction():
     database_source = DATABASE.read_text()
     events_source = EVENTS.read_text()
@@ -1421,7 +1446,7 @@ def test_runtime_test_roadmap_matches_current_coverage():
     ):
         assert_true(test_name in runtime_tests, "runtime coverage missing " + test_name)
     for contract in (
-        "40 executable no-network runtime tests",
+        "41 executable no-network runtime tests",
         "OAuth state and signed-cookie boundaries",
         "protected-event 403/404 read and write matrix",
         "vote-to-event binding",
@@ -1470,6 +1495,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(MESSAGE_RENDERING_XSS_PLAN, "message rendering XSS")
     assert_completed_plan(YELP_JSONP_RETIREMENT_PLAN, "Yelp JSONP retirement")
     assert_completed_plan(EVENT_AUTHORIZATION_EDGE_PLAN, "event authorization edge matrix")
+    assert_completed_plan(CALENDAR_JSON_RESPONSE_PLAN, "calendar JSON response")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -1496,6 +1522,7 @@ def main():
         test_availability_selection_updates_payload_after_deselect,
         test_event_template_keeps_user_text_out_of_executable_javascript,
         test_message_rendering_inserts_user_text_without_html_parsing,
+        test_calendar_api_returns_non_sniffable_json,
         test_availability_replacement_uses_one_transaction,
         test_message_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,

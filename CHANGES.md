@@ -1,5 +1,58 @@
 # Changes
 
+## 2026-06-26 13:39 PDT - P2 - Harden calendar JSON responses
+
+### Summary
+The authenticated calendar read endpoint now serves private availability rows
+with an explicit JSON media type and `nosniff` while preserving its array shape.
+
+### Work completed
+- Added the same response-header boundary already used by the message API.
+- Added a real authenticated Tornado request covering headers, decoded payload,
+  and exact user/week query parameters.
+- Added a 33rd static contract, synchronized security and runtime guidance, and
+  durable design and implementation plans.
+
+### Threads
+- Started: calendar JSON response boundary — completed directly.
+- Continued: no-network runtime coverage and historical-app privacy hardening.
+- Stopped: none.
+
+### Files changed
+- `cal.py` and `test_modern_runtime.py` — response fix and regression test.
+- `scripts/check_willbeout_contracts.py` — static and plan contracts.
+- `README.md`, `SECURITY.md`, `VISION.md`, and `docs/plans/` — maintained guidance.
+
+### Validation
+- RED: focused runtime test received `text/html; charset=UTF-8` before the fix.
+- GREEN: focused runtime test passed after the two response headers were added.
+- The first full baseline attempt used system Python without locked dependencies
+  and failed importing `cryptography`; the reviewed `.venv` interpreter passed
+  the complete baseline.
+- The first green test fixture bypassed query-call recording; the test-only
+  fixture was corrected before final validation without changing production code.
+- The first static-contract run rejected the plan because it did not contain
+  the canonical `make check` evidence phrase; the plan wording was corrected.
+- Root and external-directory `make check` passed 33 static contracts, 41
+  no-network runtime tests, 31 workflow mutations, 23 dependency-lock
+  mutations, lint, build, and Make authority checks.
+- The default isolated `pip-audit` run failed creating its temporary pip
+  environment; the exact fully pinned lock then passed with no known
+  vulnerabilities under `--no-deps --disable-pip`.
+- `git diff --check` and current-tree/added-line secret scans passed. History
+  scanning surfaced two pre-existing generic-key findings in old commits;
+  neither is in the current tree and GitHub secret scanning has no open alert.
+
+### Bugs / findings
+- P2 privacy: direct calendar API navigation used an ambiguous HTML media type
+  for authenticated user availability data.
+
+### Blockers
+- Live Meta and MySQL integration remains a credentialed environment boundary.
+
+### Next action
+- Run full lock, audit, review, hosted CI, and exact-head merge gates.
+
 ## 2026-06-26T04:59:28-0700 — P3 documentation — cycle: runtime test roadmap
 
 - Cycle: refreshed the newly merged default branch and compared its 40-test

@@ -52,6 +52,7 @@ Priority:
 - Keep hosted verification read-only, credential-free, pinned, and protected
   against structural workflow regressions
 - Keep no-network runtime coverage for auth, event access, votes, and availability updates
+- Keep authenticated calendar responses explicitly non-sniffable JSON
 - Avoid exposing friend, event, or attendance data
 
 Next priorities:
