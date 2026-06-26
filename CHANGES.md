@@ -1,5 +1,21 @@
 # Changes
 
+## 2026-06-26T04:59:28-0700 — P3 documentation — cycle: runtime test roadmap
+
+- Cycle: refreshed the newly merged default branch and compared its 40-test
+  no-network runtime suite with the remaining roadmap.
+- Finding: `VISION.md` still asked for auth, event-access, vote, and availability
+  tests even though all four areas now have executable coverage.
+- Work: replaced the stale future item with a maintained coverage invariant and
+  documented OAuth/cookie, protected-event, vote-binding, and atomic
+  availability coverage in `README.md`.
+- Contracts: added a 32nd static contract tied to representative runtime test
+  names, the README inventory, vision invariant, retired priority, and completed
+  plan evidence.
+- Validation: the contract failed first on the missing README inventory. Full
+  repository, external Make, hostile mutation, dependency health/audit,
+  compilation, bytecode cleanup, and diff evidence is recorded in the plan.
+
 ## 2026-06-26T03:10:58-0700 — P1 tests — cycle: event authorization edge matrix
 
 - Cycle: selected the remaining portable authorization-test roadmap gap after
