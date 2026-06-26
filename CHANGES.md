@@ -1,5 +1,29 @@
 # Changes
 
+## 2026-06-25T21:13:30-0700 — P3 documentation — cycle: project status and setup
+
+- Cycle: selected the highest actionable WillBeOut roadmap item after the
+  provider and live-integration priorities remained credential-dependent.
+- Finding: the README already documented environment creation, hash-verified
+  installation, required secrets, Meta/MySQL configuration, and the local entry
+  point, but it did not distinguish repository maintenance from hosted-service
+  operation or state the current GitHub archive status.
+- Work: added an explicit maintained-historical-project status, recorded that
+  the repository was not archived on GitHub when verified on June 25, 2026,
+  preserved the credentialed setup boundary, linked a completed plan, and
+  removed the stale combined roadmap item.
+- Files: updated README, VISION, AGENTS, the static contract, this log, and
+  `docs/plans/2026-06-25-project-status-and-setup.md`.
+- Validation: the new contract failed on the missing status section before the
+  documentation was added. An isolated hash-verified environment then passed
+  `make check` with 31 static contracts, 39 no-network runtime tests, 31 workflow
+  mutations, 23 lock mutations, and 40 Make authority cases; `pip check`, Python
+  compilation, dependency audit, and diff checks passed with no known
+  vulnerabilities. Three hostile documentation mutations were rejected.
+- Blockers: no documentation blocker remains; live Meta/MySQL verification and
+  any replacement place provider still require isolated credentials.
+- Next: complete exact-head review, hosted CI, and merge.
+
 ## 2026-06-25T18:33:31-0700 — P1 security — cycle: retired Yelp JSONP integration
 
 - Cycle: inspected public open work, green default branches, persisted plans,

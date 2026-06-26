@@ -7,6 +7,10 @@ The repository is useful as a historical social planning app with Tornado
 handlers, Facebook auth, templates, mobile views, voting, availability, and
 event pages.
 
+The repository is maintained as a historical application. At the June 25, 2026
+maintenance review, its GitHub repository was not archived. Maintenance does
+not imply that the original hosted service is currently operated.
+
 The goal is to preserve the app structure while making credentials, social data,
 database safety, and external-service boundaries explicit.
 
@@ -52,7 +56,6 @@ Next priorities:
 - Add a supported server-mediated place search only with reviewed provider
   credentials, response validation, privacy boundaries, and no-network tests
 - Exercise the modern Meta and MySQL integrations in an isolated credentialed environment
-- Add README setup notes and archive status
 - Add tests for auth, event access, votes, and availability updates
 - Keep `make check` covering auth and secret-configuration contracts
 - Add runtime tests for missing-event and denied-access paths
