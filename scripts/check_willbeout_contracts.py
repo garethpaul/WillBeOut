@@ -40,6 +40,7 @@ AVAILABILITY_PAYLOAD_PLAN = ROOT / "docs" / "plans" / "2026-06-16-availability-p
 AVAILABILITY_TRANSACTION_PLAN = ROOT / "docs" / "plans" / "2026-06-17-availability-replacement-transaction.md"
 MAKE_AUTHORITY_PLAN = ROOT / "docs" / "plans" / "2026-06-21-make-authority-isolation.md"
 MOBILE_EVENT_RENDERING_PLAN = ROOT / "docs" / "plans" / "2026-06-25-mobile-event-rendering.md"
+MESSAGE_RENDERING_XSS_PLAN = ROOT / "docs" / "plans" / "2026-06-25-message-rendering-xss.md"
 COOKIE_SECRET_PLAN = ROOT / "docs" / "plans" / "2026-06-08-cookie-secret-contract.md"
 SAFE_NEXT_PLAN = ROOT / "docs" / "plans" / "2026-06-08-safe-auth-next-redirect.md"
 EVENT_ACCESS_PLAN = ROOT / "docs" / "plans" / "2026-06-08-event-access-guard.md"
@@ -802,6 +803,36 @@ def test_event_template_keeps_user_text_out_of_executable_javascript():
     )
 
 
+def test_message_rendering_inserts_user_text_without_html_parsing():
+    for template in (EVENT_TEMPLATE, MOBILE_EVENT_TEMPLATE):
+        source = template.read_text()
+        callback = source.split("$.getJSON('/messages?event_id=", 1)[1].split("});", 1)[0]
+        assert_true(
+            callback.count("val.msg") == 1 and ".text(val.msg)" in callback,
+            "message rendering must use user content exactly once through a DOM text API: {0}".format(
+                template.relative_to(ROOT)
+            ),
+        )
+        assert_true(
+            ".html(" not in callback and "val['msg']" not in callback and 'val["msg"]' not in callback,
+            "message rendering callback must not parse HTML or alias message content: {0}".format(
+                template.relative_to(ROOT)
+            ),
+        )
+
+    message_source = MESSAGES.read_text()
+    runtime_tests = (ROOT / "test_modern_runtime.py").read_text()
+    assert_true(
+        'self.set_header("Content-Type", "application/json; charset=UTF-8")' in message_source
+        and 'self.set_header("X-Content-Type-Options", "nosniff")' in message_source,
+        "message API must return non-sniffable JSON",
+    )
+    assert_true(
+        "test_message_api_uses_non_sniffable_json_for_hostile_content" in runtime_tests,
+        "runtime coverage must keep hostile message MIME protection",
+    )
+
+
 def test_availability_replacement_uses_one_transaction():
     database_source = DATABASE.read_text()
     events_source = EVENTS.read_text()
@@ -1294,6 +1325,7 @@ def test_plan_and_cleanup_contracts_exist():
     assert_completed_plan(AVAILABILITY_TRANSACTION_PLAN, "availability replacement transaction")
     assert_completed_plan(MAKE_AUTHORITY_PLAN, "Make authority isolation")
     assert_completed_plan(MOBILE_EVENT_RENDERING_PLAN, "mobile event rendering")
+    assert_completed_plan(MESSAGE_RENDERING_XSS_PLAN, "message rendering XSS")
 
     gitignore = GITIGNORE.read_text()
     for pattern in ["__pycache__/", "*.py[cod]", ".env", ".DS_Store"]:
@@ -1319,6 +1351,7 @@ def main():
         test_availability_payload_is_validated_before_mutation,
         test_availability_selection_updates_payload_after_deselect,
         test_event_template_keeps_user_text_out_of_executable_javascript,
+        test_message_rendering_inserts_user_text_without_html_parsing,
         test_availability_replacement_uses_one_transaction,
         test_message_ids_are_validated_before_database_access,
         test_mobile_event_rendering_requires_owner_or_friend_access,

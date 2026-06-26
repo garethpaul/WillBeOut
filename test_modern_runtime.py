@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 import unittest
+from datetime import datetime
 from http.cookies import SimpleCookie
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -420,6 +421,24 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
         self.assertEqual(200, response.code)
         self.assertEqual(1, len(self.database.query_calls))
         self.assertEqual([], self.graph.request_calls)
+
+    def test_message_api_uses_non_sniffable_json_for_hostile_content(self):
+        self.database.event = {"id": 1, "userid": "42"}
+        self.database.query = lambda *_args: [{
+            "id": 7,
+            "user_id": "42",
+            "msg": "%3Cscript%3Ealert%281%29%3C/script%3E",
+            "d": datetime(2026, 6, 25),
+        }]
+
+        response = self.fetch(
+            "/messages?event_id=1", headers=self._auth_headers()
+        )
+
+        self.assertEqual(200, response.code)
+        self.assertEqual("application/json; charset=UTF-8", response.headers["Content-Type"])
+        self.assertEqual("nosniff", response.headers["X-Content-Type-Options"])
+        self.assertIn(b"<script>alert(1)</script>", response.body)
 
     def test_owner_event_page_binds_authenticated_user_to_vote_query(self):
         self.database.event = {
