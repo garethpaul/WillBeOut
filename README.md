@@ -32,7 +32,8 @@ without those services.
 - `database.py` - parameterized PyMySQL adapter
 - `facebook_client.py` - bounded HTTPS OAuth and Graph client
 - `session.py` - Fernet encryption for browser-session authentication data
-- `test_modern_runtime.py` - executable no-network runtime tests
+- `test_modern_runtime.py` - executable no-network runtime tests, including the
+  full protected-event 403/404 read and write matrix
 - `scripts/` - static and workflow mutation contracts
 - `requirements.txt` - exact direct dependency pins
 - `requirements.lock` - exact resolved production graph

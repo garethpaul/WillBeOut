@@ -347,6 +347,24 @@ class ModernRuntimeTest(unittest.IsolatedAsyncioTestCase):
 
 
 class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
+    PROTECTED_EVENT_READS = [
+        "/messages?event_id=1",
+        "/time?event_id=1",
+        "/attend/data?event_id=1",
+        "/event?event_id=1",
+        "/mobile/event?id=1",
+    ]
+    PROTECTED_EVENT_WRITES = [
+        ("/attend", "event_id=1"),
+        ("/attend/no", "event_id=1"),
+        ("/messages", "id=1&msg=hello&type=message"),
+        ("/delete/message", "ide=2&event_id=1"),
+        ("/vote", "id=2&event_id=1"),
+        ("/change/vote", "id=2&event_id=1"),
+        ("/suggest", "event_id=1&name=a&url=b&address=c&city=d"),
+        ("/time", "event_id=1&availabletimes=1"),
+    ]
+
     def get_app(self):
         self.database = FakeEventDatabase({"id": 1, "userid": "7"})
         self.graph = FakeGraphClient()
@@ -385,30 +403,47 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
         self.assertEqual([], self.database.query_calls, path)
         self.assertEqual([], self.database.execute_calls, path)
         self.assertEqual([], self.database.rowcount_calls, path)
+        self.assertEqual([], self.database.transaction_calls, path)
+
+    def _assert_missing_event_stops_after_lookup(self, path, method="GET", body=None):
+        self.database.event = None
+        self.database.reset_protected_calls()
+        get_call_count = len(self.database.get_calls)
+        response = self.fetch(
+            path,
+            method=method,
+            body=body,
+            headers=self._auth_headers(),
+            follow_redirects=False,
+        )
+        self.assertEqual(404, response.code, path)
+        self.assertEqual(get_call_count + 1, len(self.database.get_calls), path)
+        statement, parameters = self.database.get_calls[-1]
+        self.assertIn("willbeout_events", statement, path)
+        self.assertEqual((1,), parameters, path)
+        self.assertEqual([], self.graph.request_calls, path)
+        self.assertEqual([], self.database.query_calls, path)
+        self.assertEqual([], self.database.execute_calls, path)
+        self.assertEqual([], self.database.rowcount_calls, path)
+        self.assertEqual([], self.database.transaction_calls, path)
 
     def test_unauthorized_event_reads_stop_after_access_lookup(self):
-        for path in [
-            "/messages?event_id=1",
-            "/time?event_id=1",
-            "/attend/data?event_id=1",
-            "/event?event_id=1",
-            "/mobile/event?id=1",
-        ]:
+        for path in self.PROTECTED_EVENT_READS:
             self._assert_denied_without_protected_database_access(path)
 
     def test_unauthorized_event_writes_stop_before_mutation(self):
-        requests = [
-            ("/attend", "event_id=1"),
-            ("/attend/no", "event_id=1"),
-            ("/messages", "id=1&msg=hello&type=message"),
-            ("/delete/message", "ide=2&event_id=1"),
-            ("/vote", "id=2&event_id=1"),
-            ("/change/vote", "id=2&event_id=1"),
-            ("/suggest", "event_id=1&name=a&url=b&address=c&city=d"),
-            ("/time", "event_id=1&availabletimes=1"),
-        ]
-        for path, body in requests:
+        for path, body in self.PROTECTED_EVENT_WRITES:
             self._assert_denied_without_protected_database_access(
+                path, method="POST", body=body
+            )
+
+    def test_missing_event_reads_stop_after_event_lookup(self):
+        for path in self.PROTECTED_EVENT_READS:
+            self._assert_missing_event_stops_after_lookup(path)
+
+    def test_missing_event_writes_stop_before_mutation(self):
+        for path, body in self.PROTECTED_EVENT_WRITES:
+            self._assert_missing_event_stops_after_lookup(
                 path, method="POST", body=body
             )
 
@@ -721,17 +756,6 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
             ],
             [parameters for _statement, parameters in statements[1:]],
         )
-
-    def test_missing_event_is_not_disclosed_as_forbidden(self):
-        self.database.event = None
-        response = self.fetch(
-            "/messages?event_id=1", headers=self._auth_headers()
-        )
-
-        self.assertEqual(404, response.code)
-        self.assertEqual([], self.graph.request_calls)
-        self.assertEqual([], self.database.query_calls)
-
 
 class AuthHandlerTest(AsyncHTTPTestCase):
     def get_app(self):

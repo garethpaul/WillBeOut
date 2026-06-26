@@ -33,6 +33,8 @@ Priority:
 - Enforce owner/friend access before rendering mobile event details
 - Enforce the same owner/friend access before every event-scoped supporting API
   read or write
+- Keep denied and missing-event runtime matrices covering every protected read
+  and write before queries or mutations, including transactional writes
 - Return missing desktop events before reading owner fields
 - Validate event ids before querying event detail data
 - Validate vote ids before writing or deleting vote data
@@ -58,7 +60,6 @@ Next priorities:
 - Exercise the modern Meta and MySQL integrations in an isolated credentialed environment
 - Add tests for auth, event access, votes, and availability updates
 - Keep `make check` covering auth and secret-configuration contracts
-- Add runtime tests for missing-event and denied-access paths
 
 Contribution rules:
 
