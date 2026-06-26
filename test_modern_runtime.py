@@ -475,6 +475,37 @@ class EventEndpointAuthorizationTest(AsyncHTTPTestCase):
         self.assertEqual("nosniff", response.headers["X-Content-Type-Options"])
         self.assertIn(b"<script>alert(1)</script>", response.body)
 
+    def test_calendar_api_uses_non_sniffable_json(self):
+        def calendar_query(statement, *parameters):
+            self.database.query_calls.append((statement, parameters))
+            return [{
+                "day": "Thursday",
+                "month": 6,
+                "hour": "09:00",
+                "d": 26,
+                "string": "Available",
+            }]
+
+        self.database.query = calendar_query
+
+        response = self.fetch(
+            "/calendar/get?wk=26", headers=self._auth_headers()
+        )
+
+        self.assertEqual(200, response.code)
+        self.assertEqual("application/json; charset=UTF-8", response.headers["Content-Type"])
+        self.assertEqual("nosniff", response.headers["X-Content-Type-Options"])
+        self.assertEqual([{
+            "day": "Thursday",
+            "month": 6,
+            "hour": "09:00",
+            "date": 26,
+            "string": "Available",
+        }], json.loads(response.body))
+        statement, parameters = self.database.query_calls[-1]
+        self.assertIn("willbeout_times", statement)
+        self.assertEqual(("42", "26"), parameters)
+
     def test_owner_event_page_binds_authenticated_user_to_vote_query(self):
         self.database.event = {
             "id": 1,

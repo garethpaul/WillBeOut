@@ -97,17 +97,18 @@ The `Procfile` uses the same Python 3 entry point.
 
 ## Testing and Verification
 
-The 40 executable no-network runtime tests cover:
+The 41 executable no-network runtime tests cover:
 
 - OAuth state and signed-cookie boundaries
 - protected-event 403/404 read and write matrix
 - vote-to-event binding
 - validated atomic availability replacement
+- non-sniffable authenticated calendar JSON with unchanged user/week scoping
 
 They run without Meta or MySQL credentials.
 
 - `/usr/bin/make lint` compiles every first-party Python module and the static checker.
-- `/usr/bin/make test` runs 32 static contracts and the executable no-network runtime
+- `/usr/bin/make test` runs 33 static contracts and the executable no-network runtime
   tests.
 - `/usr/bin/make contract-test` rejects workflow and dependency-lock policy regressions.
 - `/usr/bin/make build`, `/usr/bin/make verify`, and `/usr/bin/make check` provide stable repository gates.

@@ -25,6 +25,8 @@ class CalHandler(base.BaseHandler):
 
     @tornado.web.authenticated
     def get(self):
+            self.set_header("Content-Type", "application/json; charset=UTF-8")
+            self.set_header("X-Content-Type-Options", "nosniff")
             _json = []
             _user_id = self.get_current_user()['id']
             _wk = self.get_argument('wk')

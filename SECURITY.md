@@ -101,6 +101,9 @@ performing protected data queries or mutations.
 Decoded message content is inserted into desktop and mobile event pages through
 DOM text APIs. Message values must not be concatenated into HTML strings or
 passed to `.html()`, because stored user content would become executable markup.
+Authenticated calendar rows keep their existing JSON array contract but must
+use an explicit JSON media type and `X-Content-Type-Options: nosniff` so direct
+navigation cannot reinterpret private availability data as HTML.
 Vote mutations also require an exact suggestion and event match; missing or
 cross-event suggestions return 404 before vote storage is read or changed.
 
