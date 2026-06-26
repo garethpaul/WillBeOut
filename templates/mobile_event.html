@@ -62,24 +62,23 @@ function getCookie(name) {
 		<script type='text/javascript'>
 		$(document).ready(function(){
 			// SPINNER START
-			$('.msglist').html('Loading');
+			$('.msglist').text('Loading');
 			$.getJSON('/messages?event_id={{ event['id'] }}', function(data) {
-				var items = '';
+				$('.msglist').empty();
 			  	$.each(data, function(key, val) {
+					var item = $('<li>').attr('id', val.id);
 					if ( val.user_id == {{ current_user['id'] }} ){
-						items += ('<li class="admin" id="' + val.id + '">')
-					} else{
-						items += ('<li id="' + val.id + '">');
+						item.addClass('admin');
 					}
-					items += ('<img class="left" src="https://graph.facebook.com/' 
-						   + val.user_id 
-						   +'/picture?type=small"/>'
-						   + '<span class="msg">' + val.msg + '</span>'
-						   + '<span class="date right">' + val.d + '</span>');
-					items += ('<div class="clear"></div></li>');
+					$('<img>')
+						.addClass('left')
+						.attr('src', 'https://graph.facebook.com/' + encodeURIComponent(val.user_id) + '/picture?type=small')
+						.appendTo(item);
+					$('<span>').addClass('msg').text(val.msg).appendTo(item);
+					$('<span>').addClass('date right').text(val.d).appendTo(item);
+					$('<div>').addClass('clear').appendTo(item);
+					$('.msglist').append(item);
 				});
-				$('.msglist').html('');
-				$('.msglist').append(items);
 			});
 		})
 

@@ -1,5 +1,29 @@
 # Changes
 
+## 2026-06-25T18:15:09-0700 — P0 security — cycle: stored message rendering XSS
+
+- Cycle: inspected public open work, green main-branch workflows, persisted risks,
+  WillBeOut message creation, storage, API decoding, templates, tests, and plans.
+- Threads: four investigators reviewed handler ordering, history, contracts, and
+  adversarial input semantics; their review exposed a higher-priority rendering sink.
+- Bug: both desktop and mobile event views concatenated decoded `val.msg` content
+  into HTML strings before DOM insertion, allowing stored messages to create
+  executable markup for authorized event viewers.
+- Work: replaced string-built message rows with DOM construction, assigned message
+  and date values through `.text()`, encoded profile path components, and added a
+  mutation-sensitive static security contract plus policy documentation. The
+  message API now returns non-sniffable JSON for direct navigation.
+- Files: changed both event templates, the static checker, README, SECURITY,
+  VISION, this log, and the message-rendering implementation plan.
+- Validation: RED failed on the desktop HTML sink and inspection confirmed the
+  same mobile pattern. Full `make check` passes with 29 static contracts, 38
+  runtime tests, 54 workflow/lock mutations, lint, and Make authority; both
+  renderer mutations are rejected and hostile direct JSON content stays data.
+- Findings: blank/length validation remains desirable, but no live schema limit is
+  documented and desktop/mobile length semantics differ; that policy is deferred.
+- Blockers: none for the XSS fix; live Meta/MySQL integration remains out of scope.
+- Next: complete re-review, exact-head Codex review, hosted CI, and merge.
+
 ## 2026-06-25
 
 - Restored authorized mobile event rendering with dictionary access compatible

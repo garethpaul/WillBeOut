@@ -23,6 +23,8 @@ class MessageHandler(base.BaseHandler):
     async def get(self):
         _event_id = self.get_int_argument('event_id')
         await self.require_event_access(_event_id)
+        self.set_header("Content-Type", "application/json; charset=UTF-8")
+        self.set_header("X-Content-Type-Options", "nosniff")
         msgs = self.db.query(
             "SELECT id, user_id, msg, d FROM willbeout_messages WHERE event_id = %s ORDER BY d DESC",
             _event_id)

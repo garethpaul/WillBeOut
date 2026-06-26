@@ -95,6 +95,9 @@ endpoints require the current user to own the event or exactly match the
 owner's Facebook friend ID before event-scoped data is read or changed. Missing
 events return 404, while existing unauthorized events return 403 without
 performing protected data queries or mutations.
+Decoded message content is inserted into desktop and mobile event pages through
+DOM text APIs. Message values must not be concatenated into HTML strings or
+passed to `.html()`, because stored user content would become executable markup.
 Vote mutations also require an exact suggestion and event match; missing or
 cross-event suggestions return 404 before vote storage is read or changed.
 

@@ -84,7 +84,7 @@ The `Procfile` uses the same Python 3 entry point.
 ## Testing and Verification
 
 - `/usr/bin/make lint` compiles every first-party Python module and the static checker.
-- `/usr/bin/make test` runs 28 static contracts and the executable no-network runtime
+- `/usr/bin/make test` runs 29 static contracts and the executable no-network runtime
   tests.
 - `/usr/bin/make contract-test` rejects workflow and dependency-lock policy regressions.
 - `/usr/bin/make build`, `/usr/bin/make verify`, and `/usr/bin/make check` provide stable repository gates.
